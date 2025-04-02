@@ -1,251 +1,11 @@
 const rl = @import("raylib");
 const ui = @import("raygui");
 const std = @import("std");
-
-pub var DEBUG_MODE = false;
-
-pub const CellTexture = struct {
-    texture: ?rl.Texture,
-    textureOffset: ?rl.Rectangle,
-    displayOffset: rl.Vector2,
-    zLevel: i32,
-
-    pub fn cmpByZ(context: void, a: CellTexture, b: CellTexture) bool {
-        _ = context;
-        if (a.zLevel < b.zLevel) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-};
-
-pub const Cell = struct {
-    id: i32,
-    hover: bool,
-    pos: rl.Vector2,
-    textures: std.ArrayList(CellTexture),
-
-    pub fn draw(self: @This(), cellSize: f32) void {
-        const rownum = self.pos.y;
-        const colnum = self.pos.x;
-
-        var thickness: f32 = 2;
-        var color: rl.Color = .magenta;
-        if (self.hover) {
-            thickness = 4;
-            color = .green;
-        }
-
-        if (self.textures.items.len > 0) {
-            std.mem.sort(
-                CellTexture,
-                self.textures.items,
-                {},
-                comptime CellTexture.cmpByZ,
-            );
-        }
-
-        for (self.textures.items) |item| {
-            if (item.texture != null and item.textureOffset != null) {
-                rl.drawTexturePro(
-                    item.texture.?,
-                    item.textureOffset.?,
-                    .{
-                        .x = colnum + item.displayOffset.x,
-                        .y = rownum + item.displayOffset.y,
-                        .width = 48,
-                        .height = 48,
-                    },
-                    .{ .x = 0, .y = 0 },
-                    0.0,
-                    .white,
-                );
-            }
-        }
-        if (DEBUG_MODE) {
-            var buffer: [8]u8 = std.mem.zeroes([8]u8);
-            const s = std.fmt.bufPrintZ(
-                &buffer,
-                "{d},{d}",
-                .{ rownum, colnum },
-            ) catch "";
-
-            rl.drawText(
-                s,
-                @as(i32, @intFromFloat(colnum)),
-                @as(i32, @intFromFloat(rownum)),
-                8,
-                color,
-            );
-
-            buffer = std.mem.zeroes([8]u8);
-            const s2 = std.fmt.bufPrintZ(
-                &buffer,
-                "{d}",
-                .{self.id},
-            ) catch "";
-
-            rl.drawText(
-                s2,
-                @as(i32, @intFromFloat(colnum)) + 2,
-                @as(i32, @intFromFloat(rownum)) + 10,
-                8,
-                color,
-            );
-        }
-
-        if (DEBUG_MODE) {
-            rl.drawLineEx(
-                .{ .x = colnum, .y = rownum },
-                .{ .x = colnum + cellSize, .y = rownum },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum + cellSize, .y = rownum },
-                .{ .x = colnum + cellSize, .y = rownum + cellSize },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum + cellSize, .y = rownum + cellSize },
-                .{ .x = colnum, .y = rownum + cellSize },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum, .y = rownum + cellSize },
-                .{ .x = colnum, .y = rownum },
-                thickness,
-                color,
-            );
-        }
-    }
-};
-
-pub const Grid = struct {
-    pub const numCols: comptime_int = 21;
-    pub const numRows: comptime_int = 16;
-    cellSize: i32,
-    cells: [Grid.numRows][Grid.numCols]Cell,
-
-    pub fn draw(self: @This(), state: *State) void {
-        var hovered: ?*Cell = null;
-        var cellId: i32 = 0;
-        for (0..@as(usize, @intCast(Grid.numRows))) |r| {
-            const cellSize: f32 = @as(f32, @floatFromInt(self.cellSize));
-            const rownum = @as(f32, @floatFromInt(r)) * cellSize;
-            for (0..@as(usize, @intCast(Grid.numCols))) |c| {
-                const colnum = @as(f32, @floatFromInt(c)) * cellSize;
-                const cellPos: rl.Vector2 = .{ .x = colnum, .y = rownum };
-                state.grid.cells[r][c].pos = cellPos;
-                cellId += 1;
-                state.grid.cells[r][c].id = cellId;
-
-                if (state.mousePos.x <= colnum + cellSize and state.mousePos.y <= rownum + cellSize and state.mousePos.x >= colnum and state.mousePos.y >= rownum) {
-                    state.grid.cells[r][c].hover = true;
-                } else {
-                    state.grid.cells[r][c].hover = false;
-                }
-
-                if (!state.grid.cells[r][c].hover) {
-                    state.grid.cells[r][c].draw(cellSize);
-                } else {
-                    hovered = &state.grid.cells[r][c];
-                }
-            }
-        }
-
-        if (hovered != null) {
-            hovered.?.draw(@as(f32, @floatFromInt(self.cellSize)));
-        }
-    }
-};
-
-pub const Adventurer = struct {
-    name: [:0]const u8,
-    pos: rl.Vector2,
-    nameKnown: bool,
-
-    pub fn draw(self: @This(), state: *State) void {
-        const textureWidth = 100;
-        const textureHeight = 124;
-
-        if (state.textureMap.get(.Adventurer)) |texture| {
-            rl.drawTexturePro(
-                texture,
-                .{
-                    .x = 0,
-                    .y = 0,
-                    .width = textureWidth,
-                    .height = textureHeight,
-                },
-                .{
-                    .height = textureHeight,
-                    .width = textureWidth,
-                    .x = self.pos.x,
-                    .y = self.pos.y,
-                },
-                .{ .x = 0, .y = 0 },
-                0.0,
-                .white,
-            );
-        }
-    }
-};
-
-pub const Player = struct {
-    pos: rl.Vector2,
-    equiped: bool,
-    name: [:0]u8,
-
-    pub fn draw(self: @This(), state: *State, rotation: f32) void {
-        const textureOffset: rl.Rectangle = .{
-            .height = 128,
-            .width = 50,
-            .x = 0,
-            .y = 0,
-        };
-        if (state.textureMap.get(.Sword)) |texture| {
-            rl.drawTexturePro(
-                texture,
-                textureOffset,
-                .{
-                    .x = self.pos.x,
-                    .y = self.pos.y,
-                    .width = 40,
-                    .height = 100,
-                },
-                .{ .x = 0, .y = 0 },
-                rotation,
-                .white,
-            );
-        }
-    }
-};
-
-pub const State = struct {
-    player: Player,
-    adventurer: Adventurer,
-    grid: Grid,
-    mousePos: rl.Vector2,
-    textureMap: std.AutoHashMap(TextureType, rl.Texture),
-    phase: GamePhase,
-
-    pub fn NextPhase(self: @This()) GamePhase {
-        var nextPhase: GamePhase = .START;
-        if (self.phase == .START) {
-            nextPhase = .PLAY;
-        } else if (self.phase == .PLAY) {
-            nextPhase = .DEATH;
-        } else if (self.phase == .DEATH) {
-            nextPhase = .END;
-        }
-        std.debug.print("Transitioning from phase {} to {}", .{ self.phase, nextPhase });
-        return nextPhase;
-    }
-};
+const s = @import("objects/state.zig");
+const g = @import("objects/grid.zig");
+const p = @import("objects/player.zig");
+const a = @import("objects/adventurer.zig");
+const enums = @import("enums.zig");
 
 pub fn loadGroundTextures() !rl.Texture {
     return try loadTexture("resources/ground.png");
@@ -262,7 +22,7 @@ pub fn loadTexture(path: [:0]const u8) !rl.Texture {
     return texture;
 }
 
-pub fn drawUi(state: *State, topUI: f32) void {
+pub fn drawUi(state: *s.State, topUI: f32) void {
     if (state.textureMap.get(.SwordIcon)) |texture| {
         rl.drawTexturePro(
             texture,
@@ -394,22 +154,33 @@ pub fn drawUi(state: *State, topUI: f32) void {
     }
 }
 
-const TextureType = enum(u8) {
-    SwordIcon,
-    AdventurerIcon,
-    Adventurer,
-    HealthPip,
-    DurabilityPip,
-    EnergyPip,
-    Sword,
-};
+pub fn concatStrings(allocator: std.mem.Allocator, str1: [:0]const u8, str2: [:0]const u8) ![:0]u8 {
+    const len1 = str1.len;
+    const len2 = str2.len;
 
-const GamePhase = enum(u8) {
-    START,
-    PLAY,
-    DEATH,
-    END,
-};
+    var chars1: usize = 0;
+    for (0..len1) |i| {
+        if (str1[i] > 0) {
+            chars1 += 1;
+        }
+    }
+
+    var chars2: usize = 0;
+    for (0..len2) |i| {
+        if (str2[i] > 0) {
+            chars2 += 1;
+        }
+    }
+
+    const totalContentLen = chars1 + chars2;
+
+    const result = try allocator.allocSentinel(u8, totalContentLen, 0);
+    errdefer allocator.free(result);
+
+    @memcpy(result.ptr[0..chars1], str1.ptr[0..chars1]);
+    @memcpy(result.ptr[chars1 .. chars1 + chars2], str2.ptr[0..chars2]);
+    return result;
+}
 
 pub fn main() anyerror!void {
     // Initialization
@@ -430,7 +201,7 @@ pub fn main() anyerror!void {
     // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     // const allocator = gpa.allocator();
 
-    const List = std.ArrayList(CellTexture);
+    const List = std.ArrayList(g.CellTexture);
 
     const texture = try loadGroundTextures();
     defer rl.unloadTexture(texture);
@@ -459,7 +230,7 @@ pub fn main() anyerror!void {
     const sword = try loadTexture("resources/sword1.png");
     defer rl.unloadTexture(sword);
 
-    var map = std.AutoHashMap(TextureType, rl.Texture).init(allocator);
+    var map = std.AutoHashMap(enums.TextureType, rl.Texture).init(allocator);
     defer map.deinit();
 
     try map.put(.SwordIcon, swordIcon);
@@ -470,8 +241,9 @@ pub fn main() anyerror!void {
     try map.put(.EnergyPip, pipEnergyIcon);
     try map.put(.Sword, sword);
 
-    var state: State = .{
+    var state: s.State = .{
         .phase = .START,
+        .mode = .PAUSE,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
             .equiped = false,
@@ -486,14 +258,14 @@ pub fn main() anyerror!void {
         .textureMap = map,
         .grid = .{
             .cellSize = 48,
-            .cells = [_][Grid.numCols]Cell{
-                [_]Cell{.{
+            .cells = [_][g.Grid.numCols]g.Cell{
+                [_]g.Cell{.{
                     .id = 0,
                     .hover = false,
                     .pos = .{ .x = 0, .y = 0 },
                     .textures = List.init(allocator),
-                }} ** Grid.numCols,
-            } ** Grid.numRows,
+                }} ** g.Grid.numCols,
+            } ** g.Grid.numRows,
         },
     };
 
@@ -513,7 +285,7 @@ pub fn main() anyerror!void {
     var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
 
     // add ground textures
-    for (0..Grid.numCols) |i| {
+    for (0..g.Grid.numCols) |i| {
         const textureWidth = 215;
         const textureHeight = 250;
         const widthTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureWidth;
@@ -556,6 +328,7 @@ pub fn main() anyerror!void {
     const groundY = (state.grid.cells.len - 4) * @as(f32, @floatFromInt(state.grid.cellSize));
 
     state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
+    var tutorialStep: u4 = 0;
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
     //--------------------------1------------------------------------------------------------
@@ -630,7 +403,7 @@ pub fn main() anyerror!void {
         );
 
         if (ui.guiButton(.{ .x = 50, .y = 50, .height = 45, .width = 100 }, "DEBUG") > 0) {
-            DEBUG_MODE = !DEBUG_MODE;
+            s.DEBUG_MODE = !s.DEBUG_MODE;
         }
 
         _ = ui.guiDummyRec(
@@ -656,42 +429,161 @@ pub fn main() anyerror!void {
             );
         }
 
-        if (state.phase == .PLAY) {
-            const messageRect: rl.Rectangle = .{
-                .height = 200,
-                .width = 500,
-                .x = (screenWidth - 500) / 2,
-                .y = (screenHeight - groundY) / 2,
-            };
-
-            if (state.player.name.len == 0) {
-                if (ui.guiTextInputBox(
-                    messageRect,
-                    "PLAYER NAME",
-                    "What do they call you?",
-                    "accept",
-                    &newName,
-                    10,
-                    null,
-                ) > 0) {
-                    state.player.name = &newName;
-                }
-            }
+        if (tutorialStep < 4) {
+            try tutorial(
+                &state,
+                screenWidth,
+                screenHeight,
+                groundY,
+                &tutorialStep,
+                &newName,
+                &allocator,
+            );
+        }
+        if (tutorialStep >= 4) {
+            state.mode = .WALKING;
         }
 
         state.player.draw(&state, playerRotation);
         state.grid.draw(&state);
         state.adventurer.draw(&state);
 
-        if (DEBUG_MODE) {
+        if (s.DEBUG_MODE) {
             rl.drawFPS(25, 25);
         }
         //----------------------------------------------------------------------------------
     }
 
-    for (0..@as(usize, @intCast(Grid.numRows))) |r| {
-        for (0..@as(usize, @intCast(Grid.numCols))) |c| {
+    for (0..@as(usize, @intCast(g.Grid.numRows))) |r| {
+        for (0..@as(usize, @intCast(g.Grid.numCols))) |c| {
             state.grid.cells[r][c].textures.deinit();
+        }
+    }
+}
+
+pub fn tutorial(
+    state: *s.State,
+    screenWidth: comptime_int,
+    screenHeight: comptime_int,
+    groundY: f32,
+    tutorialStep: *u4,
+    newName: *[10:0]u8,
+    allocator: *const std.mem.Allocator,
+) !void {
+    if (state.phase == .PLAY) {
+        const messageRect: rl.Rectangle = .{
+            .height = 200,
+            .width = 500,
+            .x = (screenWidth - 500) / 2,
+            .y = (screenHeight - groundY) / 2,
+        };
+
+        if (tutorialStep.* == 0) {
+            if (ui.guiMessageBox(
+                messageRect,
+                "YOU",
+                "Greetings Adventurer!",
+                "next",
+            ) > 0) {
+                tutorialStep.* = 1;
+                return;
+            }
+            state.player.drawPortrait(
+                state,
+                .{
+                    .height = 60,
+                    .width = 20,
+                    .x = messageRect.x + 10,
+                    .y = messageRect.y + 30,
+                },
+            );
+        }
+
+        if (tutorialStep.* == 1 and state.player.name.len == 0) {
+            const messageRect2: rl.Rectangle = .{
+                .height = 200,
+                .width = 500,
+                .x = (screenWidth - 500) / 2,
+                .y = (screenHeight - groundY) / 2,
+            };
+            if (ui.guiTextInputBox(
+                messageRect2,
+                "ADVENTURER",
+                "Woah, a talking sword! What do they call you?",
+                "next",
+                newName,
+                10,
+                null,
+            ) > 0) {
+                state.player.name = newName;
+                tutorialStep.* = 2;
+                return;
+            }
+
+            state.adventurer.drawPortrait(
+                state,
+                .{
+                    .height = 60,
+                    .width = 60,
+                    .x = messageRect.x + 10,
+                    .y = messageRect.y + 30,
+                },
+            );
+        }
+
+        if (tutorialStep.* == 2 and state.player.name.len > 0) {
+            var buffer: [13 + 10:0]u8 = std.mem.zeroes([13 + 10:0]u8);
+            _ = std.fmt.bufPrint(
+                &buffer,
+                "They call me {s}.",
+                .{state.player.name},
+            ) catch "";
+
+            if (ui.guiMessageBox(
+                messageRect,
+                state.player.name,
+                &buffer,
+                "next",
+            ) > 0) {
+                tutorialStep.* = 3;
+                return;
+            }
+            state.player.drawPortrait(
+                state,
+                .{
+                    .height = 60,
+                    .width = 20,
+                    .x = messageRect.x + 10,
+                    .y = messageRect.y + 30,
+                },
+            );
+        }
+
+        if (tutorialStep.* == 3 and state.player.name.len > 0) {
+            const sx = try concatStrings(
+                allocator.*,
+                state.player.name,
+                "? stange name for a sword. Let's go!",
+            );
+            defer allocator.free(sx);
+            if (ui.guiMessageBox(
+                messageRect,
+                "ADVENTURER",
+                sx,
+                "next",
+            ) > 0) {
+                tutorialStep.* = 4;
+                return;
+            }
+            state.adventurer.drawPortrait(
+                state,
+                .{
+                    .height = 60,
+                    .width = 60,
+                    .x = messageRect.x + 10,
+                    .y = messageRect.y + 30,
+                },
+            );
         }
     }
 }
