@@ -28,8 +28,8 @@ pub const Cell = struct {
         const rownum = self.pos.y;
         const colnum = self.pos.x;
 
-        var thickness: f32 = 2;
-        var color: rl.Color = .magenta;
+        var thickness: f32 = 1;
+        var color: rl.Color = .gray;
         if (self.hover) {
             thickness = 4;
             color = .green;
@@ -125,8 +125,29 @@ pub const Cell = struct {
 pub const Grid = struct {
     pub const numCols: comptime_int = 21;
     pub const numRows: comptime_int = 16;
+    pub const groundRowNum = numRows - 4;
     cellSize: i32,
     cells: [Grid.numRows][Grid.numCols]Cell,
+
+    pub fn getCenterPos(self: @This()) rl.Vector2 {
+        return self.cells[numRows / 2][numCols / 2].pos;
+    }
+
+    pub fn getGroundCenterPos(self: @This()) rl.Vector2 {
+        return self.cells[groundRowNum][numCols / 2].pos;
+    }
+
+    pub fn getGroundY(self: @This()) f32 {
+        return groundRowNum * @as(f32, @floatFromInt(self.cellSize));
+    }
+
+    pub fn getWidth(self: @This()) f32 {
+        return numCols * @as(f32, @floatFromInt(self.cellSize));
+    }
+
+    pub fn getHeight(self: @This()) f32 {
+        return numRows * @as(f32, @floatFromInt(self.cellSize));
+    }
 
     pub fn draw(self: @This(), state: *s.State) void {
         var hovered: ?*Cell = null;

@@ -6,6 +6,10 @@ pub const TextureType = enum(u8) {
     DurabilityPip,
     EnergyPip,
     Sword,
+    OUTSIDEGROUND,
+    DUNGEONGROUND,
+    OUTSIDEBACKGROUND,
+    DUNGEONBACKGROUND,
 };
 
 pub const GamePhase = enum(u8) {

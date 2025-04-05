@@ -55,4 +55,8 @@ pub const Adventurer = struct {
             );
         }
     }
+
+    pub fn collides(self: @This(), other: rl.Vector2) bool {
+        return rl.Vector2.distance(self.pos.normalize(), other.normalize()) <= 1;
+    }
 };

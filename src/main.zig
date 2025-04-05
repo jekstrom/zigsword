@@ -5,14 +5,25 @@ const s = @import("objects/state.zig");
 const g = @import("objects/grid.zig");
 const p = @import("objects/player.zig");
 const a = @import("objects/adventurer.zig");
+const w = @import("walkingevent.zig");
+const e = @import("events/altar.zig");
+const m = @import("map/map.zig");
 const enums = @import("enums.zig");
 
 pub fn loadGroundTextures() !rl.Texture {
     return try loadTexture("resources/ground.png");
 }
 
+pub fn loadDungeonGroundTextures() !rl.Texture {
+    return try loadTexture("resources/dungeon.png");
+}
+
 pub fn loadBackgroundTextures() !rl.Texture {
     return try loadTexture("resources/background.png");
+}
+
+pub fn loadDungeonBackgroundTextures() !rl.Texture {
+    return try loadTexture("resources/dungeon_background.png");
 }
 
 pub fn loadTexture(path: [:0]const u8) !rl.Texture {
@@ -182,12 +193,88 @@ pub fn concatStrings(allocator: std.mem.Allocator, str1: [:0]const u8, str2: [:0
     return result;
 }
 
+pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeType) !void {
+    // Generate a new map using seed from State.
+    // Maps should all contain the same number of nodes but
+    // what each node consists of should be random.
+
+    const List = std.ArrayList(m.MapNode);
+
+    const numWalkingNodes = state.rand.intRangeAtMost(
+        u4,
+        2,
+        4,
+    );
+
+    var newMap = try state.allocator.create(m.Map);
+
+    newMap.currentMapCount = 1;
+    newMap.name = name;
+    newMap.nodes = List.init(state.allocator);
+    newMap.nextMap = null;
+
+    // TODO: Deallocate maps and nodes
+
+    for (0..numWalkingNodes) |i| {
+        // Create new nodes for the map, assigning a name.
+        const baseName = "Map Node ";
+        var floatLog: f16 = 1.0;
+        if (i > 0) {
+            floatLog = @floor(@log10(@as(f16, @floatFromInt(i))) + 1.0);
+        }
+        const digits: u64 = @as(u64, @intFromFloat(floatLog));
+        const buffer = try state.allocator.allocSentinel(
+            u8,
+            baseName.len + digits,
+            0,
+        );
+        _ = std.fmt.bufPrint(
+            buffer,
+            "{s}{d}",
+            .{ baseName, i },
+        ) catch "";
+
+        if (nodeType == .WALKING) {
+            try newMap.addMapNode(.{
+                .name = buffer,
+                .type = nodeType,
+                .texture = state.textureMap.get(.OUTSIDEGROUND),
+                .background = state.textureMap.get(.OUTSIDEBACKGROUND),
+            });
+        } else if (nodeType == .DUNGEON) {
+            try newMap.addMapNode(.{
+                .name = buffer,
+                .type = nodeType,
+                .texture = state.textureMap.get(.DUNGEONGROUND),
+                .background = state.textureMap.get(.DUNGEONBACKGROUND),
+            });
+        }
+    }
+
+    if (state.map) |_| {
+        // try state.map.?.addMap(state, "", newMap.nodes);
+        std.debug.print("Adding next map\n", .{});
+        newMap.currentMapCount = state.map.?.currentMapCount + 1;
+        state.map.?.nextMap = newMap;
+    } else {
+        newMap.currentMapCount = 1;
+        state.map = newMap.*;
+    }
+}
+
+pub fn goToNextMap(state: *s.State) void {
+    if (state.map.?.nextMap) |nm| {
+        state.map = nm.*;
+        state.currentMap = state.map.?.currentMapCount;
+    }
+}
+
 pub fn main() anyerror!void {
     // Initialization
     //--------------------------------------------------------------------------------------
     const screenWidth = 1024;
     const screenHeight = 768;
-    const gameName = "zigsword";
+    const gameName = "slicen dice";
     rl.initWindow(screenWidth, screenHeight, gameName);
     defer rl.closeWindow(); // Close window and OpenGL context
 
@@ -206,8 +293,14 @@ pub fn main() anyerror!void {
     const texture = try loadGroundTextures();
     defer rl.unloadTexture(texture);
 
+    const dungeonGroundtexture = try loadDungeonGroundTextures();
+    defer rl.unloadTexture(dungeonGroundtexture);
+
     const background = try loadBackgroundTextures();
     defer rl.unloadTexture(background);
+
+    const dungeonBackground = try loadDungeonBackgroundTextures();
+    defer rl.unloadTexture(dungeonBackground);
 
     const swordIcon = try loadTexture("resources/sword_icon.png");
     defer rl.unloadTexture(swordIcon);
@@ -240,10 +333,23 @@ pub fn main() anyerror!void {
     try map.put(.DurabilityPip, pipDurabilityIcon);
     try map.put(.EnergyPip, pipEnergyIcon);
     try map.put(.Sword, sword);
+    try map.put(.OUTSIDEGROUND, texture);
+    try map.put(.DUNGEONGROUND, dungeonGroundtexture);
+    try map.put(.OUTSIDEBACKGROUND, background);
+    try map.put(.DUNGEONBACKGROUND, dungeonBackground);
+
+    var prng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = 1337;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    const rand = prng.random();
 
     var state: s.State = .{
         .phase = .START,
         .mode = .PAUSE,
+        .currentMap = 0,
+        .currentNode = 0,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
             .equiped = false,
@@ -254,6 +360,7 @@ pub fn main() anyerror!void {
             .pos = .{ .x = 0, .y = 0 },
             .nameKnown = false,
         },
+        .map = null,
         .mousePos = .{ .x = 0, .y = 0 },
         .textureMap = map,
         .grid = .{
@@ -267,7 +374,23 @@ pub fn main() anyerror!void {
                 }} ** g.Grid.numCols,
             } ** g.Grid.numRows,
         },
+        .allocator = allocator,
+        .rand = rand,
+        .randomNumbers = [_][g.Grid.numCols]u16{[_]u16{0} ** g.Grid.numCols} ** g.Grid.numRows,
     };
+
+    for (0..g.Grid.numRows) |r| {
+        for (0..g.Grid.numCols) |c| {
+            state.randomNumbers[r][c] = state.rand.intRangeAtMost(u16, 0, 65535);
+        }
+    }
+
+    try generateNextMap(&state, "Start", .WALKING);
+    //try generateNextMap(&state, "Dungeon", .DUNGEON);
+    state.map.?.print();
+    state.currentMap = state.map.?.currentMapCount;
+    std.debug.print("current map: {d}", .{state.currentMap});
+    std.debug.print(" {s}\n", .{state.map.?.name});
 
     const camera = rl.Camera2D{
         .offset = .{ .x = 0, .y = 0 },
@@ -276,59 +399,25 @@ pub fn main() anyerror!void {
         .rotation = 0.0,
     };
 
-    var prng = std.Random.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
-    const rand = prng.random();
+    const groundY = state.grid.getGroundY();
+    const groundPos = state.grid.getGroundCenterPos();
     var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
-
-    // add ground textures
-    for (0..g.Grid.numCols) |i| {
-        const textureWidth = 215;
-        const textureHeight = 250;
-        const widthTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureWidth;
-        const widthHeightOffset = rand.intRangeAtMost(u16, 0, 1) * textureHeight;
-        const offsetRect = rl.Rectangle.init(
-            @floatFromInt(widthTextureOffset),
-            @floatFromInt(widthHeightOffset),
-            @floatFromInt(textureWidth),
-            @floatFromInt(textureHeight),
-        );
-
-        if (rand.boolean()) {
-            const rockWidthTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureWidth;
-            const rockHeightTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureHeight + 500;
-            const rockOffsetRect = rl.Rectangle.init(
-                @floatFromInt(rockWidthTextureOffset),
-                @floatFromInt(rockHeightTextureOffset),
-                @floatFromInt(textureWidth),
-                @floatFromInt(textureHeight),
-            );
-            try state.grid.cells[state.grid.cells.len - 4][i].textures.append(.{
-                .texture = texture,
-                .textureOffset = rockOffsetRect,
-                .displayOffset = .{
-                    .x = 0,
-                    .y = @as(f32, @floatFromInt(rand.intRangeAtMost(u16, 0, 20))) * -1 - 10.0,
-                },
-                .zLevel = 1,
-            });
-        }
-
-        try state.grid.cells[state.grid.cells.len - 4][i].textures.append(.{
-            .texture = texture,
-            .textureOffset = offsetRect,
-            .displayOffset = .{ .x = 0, .y = 0 },
-            .zLevel = 0,
-        });
-    }
-
-    const groundY = (state.grid.cells.len - 4) * @as(f32, @floatFromInt(state.grid.cellSize));
 
     state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
     var tutorialStep: u4 = 0;
+
+    var walkingEvent: e.AlterWalkingEvent = .{
+        .baseEvent = .{
+            .level = 0,
+            .mapCount = 1,
+            .name = "Altar",
+            .type = .ALTAR,
+            .pos = .{
+                .x = groundPos.x,
+                .y = groundPos.y - 150,
+            },
+        },
+    };
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
     //--------------------------1------------------------------------------------------------
@@ -348,7 +437,6 @@ pub fn main() anyerror!void {
             break;
         }
 
-        const bottom = state.grid.cells[state.grid.cells.len - 4][0].pos.y - screenHeight + @as(f32, @floatFromInt(state.grid.cellSize));
         const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
         const uiHeight = screenHeight - topUI;
         const uiRect: rl.Rectangle = .{ .height = uiHeight, .width = screenWidth, .x = 0, .y = topUI };
@@ -382,25 +470,7 @@ pub fn main() anyerror!void {
         defer rl.endMode2D();
 
         rl.clearBackground(.white);
-
-        rl.drawTexturePro(
-            background,
-            .{
-                .x = 0,
-                .y = 0,
-                .width = 2046,
-                .height = 1591,
-            },
-            .{
-                .x = 0,
-                .y = bottom,
-                .width = screenWidth,
-                .height = screenHeight,
-            },
-            .{ .x = 0, .y = 0 },
-            0.0,
-            .white,
-        );
+        try state.drawCurrentMapNode();
 
         if (ui.guiButton(.{ .x = 50, .y = 50, .height = 45, .width = 100 }, "DEBUG") > 0) {
             s.DEBUG_MODE = !s.DEBUG_MODE;
@@ -411,13 +481,9 @@ pub fn main() anyerror!void {
             "",
         );
 
-        drawUi(&state, topUI);
-
         if (ui.guiButton(.{ .x = 160, .y = 50, .height = 45, .width = 100 }, "Exit") > 0) {
             break;
         }
-
-        rl.clearBackground(.white);
 
         if (state.phase == .START) {
             rl.drawText(
@@ -444,12 +510,62 @@ pub fn main() anyerror!void {
             state.mode = .WALKING;
         }
 
+        if (state.mode == .WALKING) {
+            const eventPos = state.grid.getGroundCenterPos();
+            walkingEvent.baseEvent.pos = .{ .x = eventPos.x, .y = eventPos.y - 150 };
+
+            walkingEvent.draw();
+
+            if (state.mode != .PAUSE and state.adventurer.collides(walkingEvent.baseEvent.pos)) {
+                state.mode = .PAUSE;
+                walkingEvent.handle(&state);
+            }
+        }
+
         state.player.draw(&state, playerRotation);
         state.grid.draw(&state);
         state.adventurer.draw(&state);
+        drawUi(&state, topUI);
 
         if (s.DEBUG_MODE) {
-            rl.drawFPS(25, 25);
+            rl.drawFPS(
+                @as(i32, @intFromFloat(uiRect.x)) + screenWidth - 150,
+                @as(i32, @intFromFloat(uiRect.y)) + 20,
+            );
+
+            const center = state.grid.getCenterPos();
+
+            rl.drawText(
+                state.map.?.name,
+                @as(i32, @intFromFloat(center.x - 100)),
+                @as(i32, @intFromFloat(center.y)) - 350,
+                26,
+                .magenta,
+            );
+
+            for (0.., state.map.?.nodes.items) |i, item| {
+                var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
+                _ = std.fmt.bufPrintZ(
+                    &buffer,
+                    "{s}",
+                    .{item.name},
+                ) catch "";
+                if (i < state.map.?.nodes.items.len - 1) {
+                    _ = std.fmt.bufPrintZ(
+                        &buffer,
+                        "{s} ->",
+                        .{item.name},
+                    ) catch "";
+                }
+
+                rl.drawText(
+                    &buffer,
+                    @as(i32, @intFromFloat(center.x - 100)) + @as(i32, @intCast(i)) * 150,
+                    @as(i32, @intFromFloat(center.y)) - 300,
+                    20,
+                    .magenta,
+                );
+            }
         }
         //----------------------------------------------------------------------------------
     }
