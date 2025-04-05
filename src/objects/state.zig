@@ -19,6 +19,7 @@ pub const State = struct {
     currentNode: u8,
     map: ?m.Map,
     rand: std.Random,
+    // a static collection of numbers, one per cell, to use as consistent values between maps for each game state
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
 
     pub fn NextPhase(self: @This()) enums.GamePhase {
@@ -46,7 +47,6 @@ pub const State = struct {
         const num = self.randomNumbers[row][col];
         const normalized = @as(f32, @floatFromInt(num)) / 65535.0;
         const scaled: f32 = @as(f32, @floatFromInt(lowerBound)) + (normalized * (@as(f32, @floatFromInt(upperBound)) - @as(f32, @floatFromInt(lowerBound))));
-
         return @as(u16, @intFromFloat(@round(scaled)));
     }
 };

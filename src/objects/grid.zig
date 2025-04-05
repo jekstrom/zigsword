@@ -123,7 +123,8 @@ pub const Cell = struct {
 };
 
 pub const Grid = struct {
-    pub const numCols: comptime_int = 21;
+    // TODO: Calculate size of grid based on screen size
+    pub const numCols: comptime_int = 22;
     pub const numRows: comptime_int = 16;
     pub const groundRowNum = numRows - 4;
     cellSize: i32,

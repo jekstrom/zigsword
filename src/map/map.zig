@@ -67,7 +67,7 @@ pub const MapNode = struct {
                             .textureOffset = rockOffsetRect,
                             .displayOffset = .{
                                 .x = 0,
-                                .y = @as(f32, @floatFromInt(rd)) * -1 - 5.0,
+                                .y = @as(f32, @floatFromInt(rd)) * -1 - 10.0,
                             },
                             .zLevel = 1,
                         });
@@ -85,14 +85,25 @@ pub const MapNode = struct {
 
         if (self.type == .DUNGEON) {
             // add ground textures
+            const blackRect: rl.Rectangle = .{
+                .height = 100,
+                .width = state.grid.getWidth(),
+                .x = 0,
+                .y = state.grid.getGroundY(),
+            };
+            rl.drawRectanglePro(
+                blackRect,
+                .{ .x = 0, .y = 0 },
+                0.0,
+                .black,
+            );
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
+                    const row = state.grid.cells.len - 4;
                     const textureWidth = 118;
                     const textureHeight = 118;
-                    const widthTextureOffset = 400;
-                    const heightTextureOffset = 1923;
-                    // const widthTextureOffset = rand.intRangeAtMost(u16, 400, 1) * textureWidth;
-                    // const heightTextureOffset = rand.intRangeAtMost(u16, 1923, 1) * textureHeight;
+                    const widthTextureOffset = 400 + state.getConsistentRandomNumber(row, i, 0, 2) * textureWidth;
+                    const heightTextureOffset = 1806;
                     const offsetRect = rl.Rectangle.init(
                         @floatFromInt(widthTextureOffset),
                         @floatFromInt(heightTextureOffset),
@@ -100,27 +111,7 @@ pub const MapNode = struct {
                         @floatFromInt(textureHeight),
                     );
 
-                    // if (rand.boolean()) {
-                    //     const rockWidthTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureWidth;
-                    //     const rockHeightTextureOffset = rand.intRangeAtMost(u16, 0, 1) * textureHeight + 500;
-                    //     const rockOffsetRect = rl.Rectangle.init(
-                    //         @floatFromInt(rockWidthTextureOffset),
-                    //         @floatFromInt(rockHeightTextureOffset),
-                    //         @floatFromInt(textureWidth),
-                    //         @floatFromInt(textureHeight),
-                    //     );
-                    //     try state.grid.cells[state.grid.cells.len - 4][i].textures.append(.{
-                    //         .texture = texture,
-                    //         .textureOffset = rockOffsetRect,
-                    //         .displayOffset = .{
-                    //             .x = 0,
-                    //             .y = @as(f32, @floatFromInt(rand.intRangeAtMost(u16, 0, 20))) * -1 - 10.0,
-                    //         },
-                    //         .zLevel = 1,
-                    //     });
-                    // }
-
-                    try state.grid.cells[state.grid.cells.len - 4][i].textures.append(.{
+                    try state.grid.cells[row][i].textures.append(.{
                         .texture = texture,
                         .textureOffset = offsetRect,
                         .displayOffset = .{ .x = 0, .y = 0 },

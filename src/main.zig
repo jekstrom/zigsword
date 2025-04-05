@@ -338,11 +338,15 @@ pub fn main() anyerror!void {
     try map.put(.OUTSIDEBACKGROUND, background);
     try map.put(.DUNGEONBACKGROUND, dungeonBackground);
 
-    var prng = std.Random.DefaultPrng.init(blk: {
-        var seed: u64 = 1337;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
+    const seed: u64 = 1337;
+
+    // Uncomment to use os rand
+    // std.posix.getrandom(std.mem.asBytes(&seed)) catch |err| {
+    //     std.debug.print("Failed to get random seed: {}\n", .{err});
+    //     return;
+    // };
+
+    var prng = std.Random.DefaultPrng.init(seed);
     const rand = prng.random();
 
     var state: s.State = .{
@@ -385,8 +389,8 @@ pub fn main() anyerror!void {
         }
     }
 
-    try generateNextMap(&state, "Start", .WALKING);
-    //try generateNextMap(&state, "Dungeon", .DUNGEON);
+    //try generateNextMap(&state, "Start", .WALKING);
+    try generateNextMap(&state, "Dungeon", .DUNGEON);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
