@@ -7,11 +7,14 @@ const p = @import("objects/player.zig");
 const a = @import("objects/adventurer.zig");
 const w = @import("walkingevent.zig");
 const e = @import("events/altar.zig");
+const ah = @import("altarHistory.zig");
 const m = @import("map/map.zig");
+const mob = @import("objects/monster.zig");
 const enums = @import("enums.zig");
+const d = @import("die.zig");
 
 pub fn loadGroundTextures() !rl.Texture {
-    return try loadTexture("resources/ground.png");
+    return try loadTexture("resources/ground_small.png");
 }
 
 pub fn loadDungeonGroundTextures() !rl.Texture {
@@ -55,7 +58,7 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
         );
     }
 
-    if (state.phase == .PLAY and state.player.name.len > 0) {
+    if (state.player.name.len > 0) {
         rl.drawText(
             state.player.name,
             250,
@@ -85,7 +88,7 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
             .white,
         );
     }
-    if (state.phase == .PLAY and state.adventurer.nameKnown and state.adventurer.name.len > 0) {
+    if (state.adventurer.nameKnown and state.adventurer.name.len > 0) {
         rl.drawText(
             state.adventurer.name,
             50,
@@ -96,7 +99,11 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
     }
 
     if (state.textureMap.get(.HealthPip)) |texture| {
-        for (0..5) |i| {
+        const numberOfPips = 5;
+
+        const healthRatio = 100 / numberOfPips;
+        const health = state.adventurer.health / healthRatio;
+        for (0..health) |i| {
             rl.drawTexturePro(
                 texture,
                 .{
@@ -107,7 +114,7 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
                 },
                 .{
                     .x = 170,
-                    .y = topUI + 10 + (20 * @as(f32, @floatFromInt(i))),
+                    .y = (topUI + 100) - 10 - (20 * @as(f32, @floatFromInt(i))),
                     .width = 16,
                     .height = 16,
                 },
@@ -119,7 +126,11 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
     }
 
     if (state.textureMap.get(.DurabilityPip)) |texture| {
-        for (0..5) |i| {
+        const numberOfPips = 5;
+
+        const durabilityRatio = 100 / numberOfPips;
+        const durability = state.player.durability / durabilityRatio;
+        for (0..durability) |i| {
             rl.drawTexturePro(
                 texture,
                 .{
@@ -130,7 +141,7 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
                 },
                 .{
                     .x = 250 + 150,
-                    .y = topUI + 10 + (20 * @as(f32, @floatFromInt(i))),
+                    .y = (topUI + 100) - 10 - (20 * @as(f32, @floatFromInt(i))),
                     .width = 16,
                     .height = 16,
                 },
@@ -153,9 +164,32 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
                 },
                 .{
                     .x = 250 + 150 + 70,
-                    .y = topUI + 10 + (20 * @as(f32, @floatFromInt(i))),
+                    .y = (topUI + 100) - 10 - (20 * @as(f32, @floatFromInt(i))),
                     .width = 16,
                     .height = 16,
+                },
+                .{ .x = 0, .y = 0 },
+                0.0,
+                .white,
+            );
+        }
+    }
+
+    if (state.textureMap.get(.D4)) |texture| {
+        for (0..state.player.dice.?.items.len) |i| {
+            rl.drawTexturePro(
+                texture,
+                .{
+                    .x = 0,
+                    .y = 0,
+                    .width = 64,
+                    .height = 64,
+                },
+                .{
+                    .x = 250 + 150 + 70 + 50 + (50 * @as(f32, @floatFromInt(i))),
+                    .y = (topUI + 20) - 10,
+                    .width = 64,
+                    .height = 64,
                 },
                 .{ .x = 0, .y = 0 },
                 0.0,
@@ -199,6 +233,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
     // what each node consists of should be random.
 
     const List = std.ArrayList(m.MapNode);
+    const MonsterList = std.ArrayList(mob.Monster);
 
     const numWalkingNodes = state.rand.intRangeAtMost(
         u4,
@@ -235,19 +270,27 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
         ) catch "";
 
         if (nodeType == .WALKING) {
-            try newMap.addMapNode(.{
+            var outsideNode: m.MapNode = .{
                 .name = buffer,
                 .type = nodeType,
                 .texture = state.textureMap.get(.OUTSIDEGROUND),
                 .background = state.textureMap.get(.OUTSIDEBACKGROUND),
-            });
+                .monsters = null,
+                .altarEvent = null,
+            };
+            try outsideNode.init(state);
+            try newMap.addMapNode(outsideNode);
         } else if (nodeType == .DUNGEON) {
-            try newMap.addMapNode(.{
+            var dungeonNode: m.MapNode = .{
                 .name = buffer,
                 .type = nodeType,
                 .texture = state.textureMap.get(.DUNGEONGROUND),
                 .background = state.textureMap.get(.DUNGEONBACKGROUND),
-            });
+                .monsters = MonsterList.init(state.allocator),
+                .altarEvent = null,
+            };
+            try dungeonNode.init(state);
+            try newMap.addMapNode(dungeonNode);
         }
     }
 
@@ -266,6 +309,25 @@ pub fn goToNextMap(state: *s.State) void {
     if (state.map.?.nextMap) |nm| {
         state.map = nm.*;
         state.currentMap = state.map.?.currentMapCount;
+        state.currentNode = 0;
+        state.grid.clearTextures();
+    }
+}
+
+pub fn goToNextMapNode(state: *s.State) void {
+    if (state.map) |map| {
+        const numnodes = map.nodes.items.len;
+        if ((state.currentNode + 1) >= numnodes) {
+            state.currentNode = 0;
+            std.debug.print("Resetting map node {d}\n", .{state.currentNode});
+            goToNextMap(state);
+        } else {
+            state.currentNode += 1;
+            std.debug.print("Going to map node {d}\n", .{state.currentNode});
+        }
+    } else {
+        std.debug.print("no map found\n", .{});
+        std.debug.assert(false);
     }
 }
 
@@ -274,7 +336,7 @@ pub fn main() anyerror!void {
     //--------------------------------------------------------------------------------------
     const screenWidth = 1024;
     const screenHeight = 768;
-    const gameName = "slicen dice";
+    const gameName = "Slicen Dice";
     rl.initWindow(screenWidth, screenHeight, gameName);
     defer rl.closeWindow(); // Close window and OpenGL context
 
@@ -289,6 +351,8 @@ pub fn main() anyerror!void {
     // const allocator = gpa.allocator();
 
     const List = std.ArrayList(g.CellTexture);
+    const AltarHistoryList = std.ArrayList(ah.AltarHistory);
+    const DiceList = std.ArrayList(d.Die);
 
     const texture = try loadGroundTextures();
     defer rl.unloadTexture(texture);
@@ -320,8 +384,23 @@ pub fn main() anyerror!void {
     const pipEnergyIcon = try loadTexture("resources/Pipenergy.png");
     defer rl.unloadTexture(pipEnergyIcon);
 
-    const sword = try loadTexture("resources/sword1.png");
+    const sword = try loadTexture("resources/sword.png");
     defer rl.unloadTexture(sword);
+
+    const goodAltar = try loadTexture("resources/good_altar.png");
+    defer rl.unloadTexture(goodAltar);
+
+    const evilAltar = try loadTexture("resources/evil_altar.png");
+    defer rl.unloadTexture(evilAltar);
+
+    const greenGoblin = try loadTexture("resources/green_goblin.png");
+    defer rl.unloadTexture(greenGoblin);
+
+    const redGoblin = try loadTexture("resources/red_goblin.png");
+    defer rl.unloadTexture(redGoblin);
+
+    const d4 = try loadTexture("resources/d4.png");
+    defer rl.unloadTexture(d4);
 
     var map = std.AutoHashMap(enums.TextureType, rl.Texture).init(allocator);
     defer map.deinit();
@@ -337,8 +416,13 @@ pub fn main() anyerror!void {
     try map.put(.DUNGEONGROUND, dungeonGroundtexture);
     try map.put(.OUTSIDEBACKGROUND, background);
     try map.put(.DUNGEONBACKGROUND, dungeonBackground);
+    try map.put(.GOODALTAR, goodAltar);
+    try map.put(.EVILALTAR, evilAltar);
+    try map.put(.GREENGOBLIN, greenGoblin);
+    try map.put(.REDGOBLIN, redGoblin);
+    try map.put(.D4, d4);
 
-    const seed: u64 = 1337;
+    const seed: u64 = 1338;
 
     // Uncomment to use os rand
     // std.posix.getrandom(std.mem.asBytes(&seed)) catch |err| {
@@ -351,18 +435,26 @@ pub fn main() anyerror!void {
 
     var state: s.State = .{
         .phase = .START,
-        .mode = .PAUSE,
+        .mode = .TUTORIAL,
+        .turn = .ENVIRONMENT,
         .currentMap = 0,
         .currentNode = 0,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
             .equiped = false,
             .name = undefined,
+            .alignment = .GOOD,
+            .altarHistory = null,
+            .blessed = false,
+            .dice = null,
+            .durability = 100,
         },
         .adventurer = .{
             .name = "Zig",
             .pos = .{ .x = 0, .y = 0 },
             .nameKnown = false,
+            .speed = 0.25,
+            .health = 100,
         },
         .map = null,
         .mousePos = .{ .x = 0, .y = 0 },
@@ -389,39 +481,30 @@ pub fn main() anyerror!void {
         }
     }
 
-    //try generateNextMap(&state, "Start", .WALKING);
+    state.grid.draw(&state);
+
+    try generateNextMap(&state, "Start", .WALKING);
     try generateNextMap(&state, "Dungeon", .DUNGEON);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
     std.debug.print(" {s}\n", .{state.map.?.name});
 
-    const camera = rl.Camera2D{
-        .offset = .{ .x = 0, .y = 0 },
-        .target = .{ .x = 0, .y = 0 },
-        .zoom = 1.0,
-        .rotation = 0.0,
-    };
-
     const groundY = state.grid.getGroundY();
-    const groundPos = state.grid.getGroundCenterPos();
     var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
 
     state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
     var tutorialStep: u4 = 0;
 
-    var walkingEvent: e.AlterWalkingEvent = .{
-        .baseEvent = .{
-            .level = 0,
-            .mapCount = 1,
-            .name = "Altar",
-            .type = .ALTAR,
-            .pos = .{
-                .x = groundPos.x,
-                .y = groundPos.y - 150,
-            },
-        },
-    };
+    state.player.altarHistory = AltarHistoryList.init(allocator);
+    state.player.dice = DiceList.init(allocator);
+    var dcount: u8 = 0;
+    while (dcount < 4) : (dcount += 1) {
+        try state.player.dice.?.append(.{
+            .name = "Basic d4",
+            .sides = 4,
+        });
+    }
 
     rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
     //--------------------------1------------------------------------------------------------
@@ -436,7 +519,7 @@ pub fn main() anyerror!void {
         const dt = rl.getFrameTime();
         const mousePos = rl.getMousePosition();
 
-        if (gameTime > 30) {
+        if (gameTime > 300) {
             std.debug.print("resetting game. current state: {}\n", .{state.phase});
             break;
         }
@@ -452,26 +535,21 @@ pub fn main() anyerror!void {
         state.mousePos = mousePos;
 
         var playerRotation: f32 = 180.0;
-        if (state.adventurer.pos.x < state.player.pos.x - 95) {
-            state.adventurer.pos.x += 90 * dt;
-        } else if (state.phase == .START) {
+        const entered = state.adventurer.enter(&state, dt);
+
+        if (entered and state.phase == .START) {
             state.player.equiped = true;
-            state.phase = state.NextPhase();
         }
 
         if (state.player.equiped) {
             playerRotation = 0.0;
             state.player.pos.y = state.adventurer.pos.y;
-            state.adventurer.nameKnown = true;
         }
 
         // Draw
         //----------------------------------------------------------------------------------
         rl.beginDrawing();
         defer rl.endDrawing();
-
-        rl.beginMode2D(camera);
-        defer rl.endMode2D();
 
         rl.clearBackground(.white);
         try state.drawCurrentMapNode();
@@ -489,17 +567,21 @@ pub fn main() anyerror!void {
             break;
         }
 
-        if (state.phase == .START) {
+        if (ui.guiButton(.{ .x = 160, .y = 100, .height = 45, .width = 100 }, "Next Map") > 0) {
+            goToNextMap(&state);
+        }
+
+        if (!entered and state.phase == .START) {
             rl.drawText(
                 "   YOU",
-                @as(i32, @intFromFloat(state.player.pos.x - 30)),
+                @as(i32, @intFromFloat(state.player.pos.x + 20)),
                 @as(i32, @intFromFloat(state.player.pos.y - 100)),
                 20,
                 .light_gray,
             );
         }
 
-        if (tutorialStep < 4) {
+        if (entered and state.mode == .TUTORIAL and tutorialStep < 4) {
             try tutorial(
                 &state,
                 screenWidth,
@@ -510,25 +592,74 @@ pub fn main() anyerror!void {
                 &allocator,
             );
         }
-        if (tutorialStep >= 4) {
+        if (state.mode == .TUTORIAL and tutorialStep >= 4) {
             state.mode = .WALKING;
         }
 
-        if (state.mode == .WALKING) {
-            const eventPos = state.grid.getGroundCenterPos();
-            walkingEvent.baseEvent.pos = .{ .x = eventPos.x, .y = eventPos.y - 150 };
-
-            walkingEvent.draw();
-
-            if (state.mode != .PAUSE and state.adventurer.collides(walkingEvent.baseEvent.pos)) {
-                state.mode = .PAUSE;
-                walkingEvent.handle(&state);
+        var monstersEntered = false;
+        const currentMapNode = try state.getCurrentMapNode();
+        if (entered and state.phase == .PLAY and state.mode != .PAUSE and state.mode != .DONE and (state.mode == .WALKING or state.mode == .BATTLE)) {
+            if (currentMapNode) |cn| {
+                if (cn.monsters != null and cn.monsters.?.items.len > 0) {
+                    const mobs = cn.monsters.?;
+                    for (0..mobs.items.len) |i| {
+                        monstersEntered = mobs.items[i].enter(&state, dt);
+                        mobs.items[i].draw(&state);
+                    }
+                } else if (cn.altarEvent != null) {
+                    try cn.altarEvent.?.handle(&state);
+                    if (cn.altarEvent.?.baseEvent.handled) {
+                        const exited = state.adventurer.exit(&state, dt);
+                        if (exited) {
+                            state.mode = .DONE;
+                        }
+                    }
+                } else {
+                    const exited = state.adventurer.exit(&state, dt);
+                    if (exited) {
+                        state.mode = .DONE;
+                    }
+                }
             }
+        }
+
+        if (monstersEntered) {
+            state.mode = .BATTLE;
+        }
+
+        // Handle exiting first map
+        if (state.phase == .START and entered and tutorialStep >= 4) {
+            const exited = state.adventurer.exit(&state, dt);
+            if (exited) {
+                state.mode = .DONE;
+                state.phase = state.NextPhase();
+            }
+        }
+
+        if (state.mode == .DONE) {
+            if (currentMapNode) |cn| {
+                if (cn.altarEvent != null) {
+                    cn.altarEvent.?.baseEvent.handled = false;
+                }
+                cn.print();
+            }
+            goToNextMapNode(&state);
+            state.mode = .WALKING;
+            state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
+        }
+
+        if (state.phase == .PLAY) {
+            state.player.update(&state);
         }
 
         state.player.draw(&state, playerRotation);
         state.grid.draw(&state);
         state.adventurer.draw(&state);
+
+        battle(&state, dt);
+
+        try currentMapNode.?.update();
+
         drawUi(&state, topUI);
 
         if (s.DEBUG_MODE) {
@@ -590,7 +721,7 @@ pub fn tutorial(
     newName: *[10:0]u8,
     allocator: *const std.mem.Allocator,
 ) !void {
-    if (state.phase == .PLAY) {
+    if (state.phase == .START) {
         const messageRect: rl.Rectangle = .{
             .height = 200,
             .width = 500,
@@ -612,7 +743,7 @@ pub fn tutorial(
                 state,
                 .{
                     .height = 60,
-                    .width = 20,
+                    .width = 60,
                     .x = messageRect.x + 10,
                     .y = messageRect.y + 30,
                 },
@@ -672,7 +803,7 @@ pub fn tutorial(
                 state,
                 .{
                     .height = 60,
-                    .width = 20,
+                    .width = 60,
                     .x = messageRect.x + 10,
                     .y = messageRect.y + 30,
                 },
@@ -704,6 +835,43 @@ pub fn tutorial(
                     .y = messageRect.y + 30,
                 },
             );
+        }
+    }
+}
+
+pub fn battle(state: *s.State, dt: f32) void {
+    if (state.phase == .PLAY and state.mode == .BATTLE) {
+        // combat
+        const monster = try state.getMonster();
+        if (monster == null) {
+            const exited = state.adventurer.exit(state, dt);
+            if (exited) {
+                state.mode = .DONE;
+            }
+        } else {
+            if (state.turn == .MONSTER) {
+                std.debug.print("Monster turn {s}\n", .{monster.?.name});
+                monster.?.attack(state);
+                state.NextTurn();
+            } else if (state.turn == .PLAYER) {
+                if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
+                    const result = state.player.dice.?.items[0].roll(state);
+                    std.debug.print("Roll result: {d}\n", .{result});
+                    state.player.durability -= 20;
+
+                    const damage = result * 20;
+                    if (damage > monster.?.health) {
+                        monster.?.health = 0;
+                    } else {
+                        monster.?.health -= result * 20;
+                    }
+
+                    _ = state.player.dice.?.pop();
+                    state.NextTurn();
+                }
+            } else {
+                state.NextTurn();
+            }
         }
     }
 }

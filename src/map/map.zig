@@ -2,15 +2,86 @@ const rl = @import("raylib");
 const std = @import("std");
 const s = @import("../objects/state.zig");
 const g = @import("../objects/grid.zig");
+const altar = @import("../events/altar.zig");
+const mob = @import("../objects/monster.zig");
 
 pub const MapNode = struct {
     name: [:0]u8,
     type: MapNodeType,
     texture: ?rl.Texture,
     background: ?rl.Texture,
+    monsters: ?std.ArrayList(mob.Monster),
+    altarEvent: ?altar.AlterWalkingEvent,
+
+    pub fn print(self: @This()) void {
+        std.debug.print(
+            "Node: {s}\nType: {}\n\n",
+            .{
+                self.name,
+                self.type,
+            },
+        );
+    }
+
+    pub fn init(self: *@This(), state: *s.State) !void {
+        const nodeContents = state.rand.intRangeAtMost(u4, 0, 15);
+
+        if (self.type == .DUNGEON and nodeContents <= 4) {
+            std.debug.print("Adding Green Goblin to node {s}\n", .{self.name});
+            try self.addMonster(.{
+                .name = "Green Goblin",
+                .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
+                .nameKnown = false,
+                .speed = 0.45,
+                .health = 100,
+                .damageRange = 25,
+            });
+        } else if (self.type == .DUNGEON and nodeContents > 4 and nodeContents <= 8) {
+            std.debug.print("Adding Red Goblin to node {s}\n", .{self.name});
+            try self.addMonster(.{
+                .name = "Red Goblin",
+                .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
+                .nameKnown = false,
+                .speed = 0.25,
+                .health = 150,
+                .damageRange = 35,
+            });
+        } else if (self.type == .DUNGEON and nodeContents > 8 and nodeContents <= 15) {
+            std.debug.print("Adding Altar to node {s}\n", .{self.name});
+            const groundCenter = state.grid.getGroundCenterPos();
+            const walkingEvent: altar.AlterWalkingEvent = .{
+                .baseEvent = .{
+                    .handled = false,
+                    .name = "Altar",
+                    .type = .ALTAR,
+                    .pos = .{
+                        .x = groundCenter.x + 100,
+                        .y = groundCenter.y - 110,
+                    },
+                },
+                .alignment = .GOOD,
+            };
+            self.altarEvent = walkingEvent;
+        }
+    }
 
     pub fn addTextures(self: *@This(), texture: rl.Texture) void {
         self.texture = texture;
+    }
+
+    pub fn addMonster(self: *@This(), monster: mob.Monster) !void {
+        try self.monsters.?.append(monster);
+    }
+
+    pub fn update(self: *@This()) !void {
+        if (self.monsters != null) {
+            for (0..self.monsters.?.items.len) |i| {
+                const hp = self.monsters.?.items[i].health;
+                if (hp <= 0) {
+                    _ = self.monsters.?.orderedRemove(i);
+                }
+            }
+        }
     }
 
     pub fn draw(self: *@This(), state: *s.State) !void {
@@ -35,11 +106,17 @@ pub const MapNode = struct {
             );
         }
 
+        if (self.altarEvent) |evt| {
+            evt.draw(state);
+        }
+
         if (self.type == .WALKING) {
             // add ground textures
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
                     const row: usize = state.grid.cells.len - 4;
+                    state.grid.cells[row][i].textures.clearAndFree();
+
                     const textureWidth = 215;
                     const textureHeight = 250;
                     const widthTextureOffset = state.getConsistentRandomNumber(row, i, 0, 1) * textureWidth;
@@ -100,6 +177,8 @@ pub const MapNode = struct {
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
                     const row = state.grid.cells.len - 4;
+                    state.grid.cells[row][i].textures.clearAndFree();
+
                     const textureWidth = 118;
                     const textureHeight = 118;
                     const widthTextureOffset = 400 + state.getConsistentRandomNumber(row, i, 0, 2) * textureWidth;

@@ -7,6 +7,24 @@ pub const Adventurer = struct {
     name: [:0]const u8,
     pos: rl.Vector2,
     nameKnown: bool,
+    speed: f32,
+    health: u8,
+
+    pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
+        if (self.pos.x < state.grid.getGroundCenterPos().x) {
+            state.adventurer.pos.x += rl.math.lerp(0, state.grid.getGroundCenterPos().x, self.speed * dt);
+            return false;
+        }
+        return true;
+    }
+
+    pub fn exit(self: *@This(), state: *s.State, dt: f32) bool {
+        if (self.pos.x < state.grid.getWidth()) {
+            state.adventurer.pos.x += rl.math.lerp(0, state.grid.getWidth(), self.speed * dt);
+            return false;
+        }
+        return true;
+    }
 
     pub fn draw(self: @This(), state: *s.State) void {
         const textureWidth = 100;

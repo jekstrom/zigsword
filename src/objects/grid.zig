@@ -24,16 +24,14 @@ pub const Cell = struct {
     pos: rl.Vector2,
     textures: std.ArrayList(CellTexture),
 
+    pub fn clearTextures(self: *@This()) void {
+        self.textures.clearAndFree();
+    }
+
     pub fn draw(self: @This(), cellSize: f32) void {
+        _ = cellSize;
         const rownum = self.pos.y;
         const colnum = self.pos.x;
-
-        var thickness: f32 = 1;
-        var color: rl.Color = .gray;
-        if (self.hover) {
-            thickness = 4;
-            color = .green;
-        }
 
         if (self.textures.items.len > 0) {
             std.mem.sort(
@@ -61,64 +59,69 @@ pub const Cell = struct {
                 );
             }
         }
-        if (s.DEBUG_MODE) {
-            var buffer: [8]u8 = std.mem.zeroes([8]u8);
-            const sx = std.fmt.bufPrintZ(
-                &buffer,
-                "{d},{d}",
-                .{ rownum, colnum },
-            ) catch "";
+        // if (s.DEBUG_MODE) {
+        //     var thickness: f32 = 1;
+        //     var color: rl.Color = .gray;
+        //     if (self.hover) {
+        //         thickness = 4;
+        //         color = .green;
+        //     }
 
-            rl.drawText(
-                sx,
-                @as(i32, @intFromFloat(colnum)),
-                @as(i32, @intFromFloat(rownum)),
-                8,
-                color,
-            );
+        //     var buffer: [8]u8 = std.mem.zeroes([8]u8);
+        //     const sx = std.fmt.bufPrintZ(
+        //         &buffer,
+        //         "{d},{d}",
+        //         .{ rownum, colnum },
+        //     ) catch "";
 
-            buffer = std.mem.zeroes([8]u8);
-            const s2 = std.fmt.bufPrintZ(
-                &buffer,
-                "{d}",
-                .{self.id},
-            ) catch "";
+        //     rl.drawText(
+        //         sx,
+        //         @as(i32, @intFromFloat(colnum)),
+        //         @as(i32, @intFromFloat(rownum)),
+        //         8,
+        //         color,
+        //     );
 
-            rl.drawText(
-                s2,
-                @as(i32, @intFromFloat(colnum)) + 2,
-                @as(i32, @intFromFloat(rownum)) + 10,
-                8,
-                color,
-            );
-        }
+        //     buffer = std.mem.zeroes([8]u8);
+        //     const s2 = std.fmt.bufPrintZ(
+        //         &buffer,
+        //         "{d}",
+        //         .{self.id},
+        //     ) catch "";
 
-        if (s.DEBUG_MODE) {
-            rl.drawLineEx(
-                .{ .x = colnum, .y = rownum },
-                .{ .x = colnum + cellSize, .y = rownum },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum + cellSize, .y = rownum },
-                .{ .x = colnum + cellSize, .y = rownum + cellSize },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum + cellSize, .y = rownum + cellSize },
-                .{ .x = colnum, .y = rownum + cellSize },
-                thickness,
-                color,
-            );
-            rl.drawLineEx(
-                .{ .x = colnum, .y = rownum + cellSize },
-                .{ .x = colnum, .y = rownum },
-                thickness,
-                color,
-            );
-        }
+        //     rl.drawText(
+        //         s2,
+        //         @as(i32, @intFromFloat(colnum)) + 2,
+        //         @as(i32, @intFromFloat(rownum)) + 10,
+        //         8,
+        //         color,
+        //     );
+
+        //     rl.drawLineEx(
+        //         .{ .x = colnum, .y = rownum },
+        //         .{ .x = colnum + cellSize, .y = rownum },
+        //         thickness,
+        //         color,
+        //     );
+        //     rl.drawLineEx(
+        //         .{ .x = colnum + cellSize, .y = rownum },
+        //         .{ .x = colnum + cellSize, .y = rownum + cellSize },
+        //         thickness,
+        //         color,
+        //     );
+        //     rl.drawLineEx(
+        //         .{ .x = colnum + cellSize, .y = rownum + cellSize },
+        //         .{ .x = colnum, .y = rownum + cellSize },
+        //         thickness,
+        //         color,
+        //     );
+        //     rl.drawLineEx(
+        //         .{ .x = colnum, .y = rownum + cellSize },
+        //         .{ .x = colnum, .y = rownum },
+        //         thickness,
+        //         color,
+        //     );
+        // }
     }
 };
 
@@ -129,6 +132,14 @@ pub const Grid = struct {
     pub const groundRowNum = numRows - 4;
     cellSize: i32,
     cells: [Grid.numRows][Grid.numCols]Cell,
+
+    pub fn clearTextures(self: *@This()) void {
+        for (0..@as(usize, @intCast(Grid.numRows))) |r| {
+            for (0..@as(usize, @intCast(Grid.numCols))) |c| {
+                self.cells[r][c].clearTextures();
+            }
+        }
+    }
 
     pub fn getCenterPos(self: @This()) rl.Vector2 {
         return self.cells[numRows / 2][numCols / 2].pos;

@@ -4,9 +4,8 @@ const rl = @import("raylib");
 pub const WalkingEvent = struct {
     name: [:0]const u8,
     type: WalkingEventType,
-    level: u8,
-    mapCount: u8,
     pos: rl.Vector2,
+    handled: bool,
 };
 
 pub const WalkingEventType = enum(u8) {
