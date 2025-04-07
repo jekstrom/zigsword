@@ -5,6 +5,8 @@ const s = @import("state.zig");
 const e = @import("../walkingevent.zig");
 const ah = @import("../altarHistory.zig");
 const d = @import("../die.zig");
+const shop = @import("shopitem.zig");
+const m = @import("monster.zig");
 
 pub const Player = struct {
     pos: rl.Vector2,
@@ -14,7 +16,64 @@ pub const Player = struct {
     altarHistory: ?std.ArrayList(ah.AltarHistory),
     blessed: bool,
     dice: ?std.ArrayList(d.Die),
-    durability: u7,
+    durability: u8,
+    gold: i32,
+    messages: ?std.ArrayList([:0]const u8),
+
+    pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) !void {
+        // self.durability -= 20;
+
+        const lastDie = state.player.dice.?.pop();
+        if (lastDie) |die| {
+            const result = die.roll(state);
+
+            var damageScaled = result;
+
+            if (self.blessed) {
+                damageScaled *= 20;
+            }
+
+            std.debug.print("Roll result: {d}/{d}; damage: {d}\n", .{ result, die.sides, damageScaled });
+
+            if (damageScaled >= monster.health) {
+                monster.health = 0;
+            } else {
+                monster.health -= damageScaled;
+                if (monster.messages != null) {
+                    var floatLog: f16 = 1.0;
+                    if (damageScaled > 0) {
+                        floatLog = @floor(@log10(@as(f16, @floatFromInt(damageScaled))) + 1.0);
+                    }
+                    const digits: u64 = @as(u64, @intFromFloat(floatLog));
+                    const buffer = try state.allocator.allocSentinel(
+                        u8,
+                        digits,
+                        0,
+                    );
+                    _ = std.fmt.bufPrint(
+                        buffer,
+                        "{d}",
+                        .{damageScaled},
+                    ) catch "";
+                    try monster.messages.?.append(buffer);
+                }
+            }
+        }
+    }
+
+    pub fn purchaseItem(self: *@This(), shopItem: shop.ShopItem) !bool {
+        if (self.dice == null) {
+            std.debug.assert(false);
+            return false;
+        }
+        if (self.gold < shopItem.price) {
+            return false;
+        }
+
+        try self.dice.?.append(shopItem.die.?);
+        self.gold -= shopItem.price;
+        return true;
+    }
 
     // Update based on actions player has taken.
     pub fn update(self: *@This(), state: *s.State) void {
@@ -43,6 +102,29 @@ pub const Player = struct {
                 self.alignment = .GOOD;
             }
         }
+    }
+
+    pub fn displayMessages(self: *@This(), decay: u8) bool {
+        if (self.messages == null or self.messages.?.items.len == 0) {
+            return false;
+        }
+        const last = self.messages.?.items.len - 1;
+        const msg = self.messages.?.items[last];
+        if (decay > 0) {
+            rl.drawText(
+                msg,
+                @as(i32, @intFromFloat(self.pos.x + 50)),
+                @as(i32, @intFromFloat(self.pos.y - 10)),
+                20,
+                rl.Color.init(255, 50, 50, decay),
+            );
+            return true;
+        }
+        if (decay == 0) {
+            _ = self.messages.?.pop();
+            return false;
+        }
+        return false;
     }
 
     pub fn draw(self: *@This(), state: *s.State, rotation: f32) void {

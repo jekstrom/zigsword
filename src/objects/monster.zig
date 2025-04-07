@@ -10,6 +10,8 @@ pub const Monster = struct {
     speed: f32,
     health: u8,
     damageRange: u8,
+    gold: u8,
+    messages: ?std.ArrayList([:0]const u8),
 
     pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
         if (self.pos.x > state.grid.getGroundCenterPos().x + 200) {
@@ -27,14 +29,59 @@ pub const Monster = struct {
         return true;
     }
 
-    pub fn attack(self: @This(), state: *s.State) void {
+    pub fn attack(self: @This(), state: *s.State) !void {
         const damage = state.rand.intRangeAtMost(u8, 1, self.damageRange);
         std.debug.print("Monster did damage: {d}\n", .{damage});
         if (damage > state.adventurer.health) {
             state.adventurer.health = 0;
         } else {
             state.adventurer.health -= damage;
+
+            var player = &state.player;
+
+            const playerMessages = player.messages;
+            if (playerMessages != null) {
+                var floatLog: f16 = 1.0;
+                if (damage > 0) {
+                    floatLog = @floor(@log10(@as(f16, @floatFromInt(damage))) + 1.0);
+                }
+                const digits: u64 = @as(u64, @intFromFloat(floatLog));
+                const buffer = try state.allocator.allocSentinel(
+                    u8,
+                    digits,
+                    0,
+                );
+                _ = std.fmt.bufPrint(
+                    buffer,
+                    "{d}",
+                    .{damage},
+                ) catch "";
+                try player.messages.?.append(buffer);
+            }
         }
+    }
+
+    pub fn displayMessages(self: *@This(), decay: u8) bool {
+        if (self.messages == null or self.messages.?.items.len == 0) {
+            return false;
+        }
+        const last = self.messages.?.items.len - 1;
+        const msg = self.messages.?.items[last];
+        if (decay > 0) {
+            rl.drawText(
+                msg,
+                @as(i32, @intFromFloat(self.pos.x + 5)),
+                @as(i32, @intFromFloat(self.pos.y - 50)),
+                20,
+                rl.Color.init(255, 50, 50, decay),
+            );
+            return true;
+        }
+        if (decay == 0) {
+            _ = self.messages.?.pop();
+            return false;
+        }
+        return false;
     }
 
     pub fn draw(self: @This(), state: *s.State) void {

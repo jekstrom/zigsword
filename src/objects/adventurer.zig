@@ -9,6 +9,7 @@ pub const Adventurer = struct {
     nameKnown: bool,
     speed: f32,
     health: u8,
+    texture: rl.Texture,
 
     pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
         if (self.pos.x < state.grid.getGroundCenterPos().x) {
@@ -27,29 +28,28 @@ pub const Adventurer = struct {
     }
 
     pub fn draw(self: @This(), state: *s.State) void {
+        _ = state;
         const textureWidth = 100;
         const textureHeight = 124;
 
-        if (state.textureMap.get(.Adventurer)) |texture| {
-            rl.drawTexturePro(
-                texture,
-                .{
-                    .x = 0,
-                    .y = 0,
-                    .width = textureWidth,
-                    .height = textureHeight,
-                },
-                .{
-                    .height = textureHeight,
-                    .width = textureWidth,
-                    .x = self.pos.x,
-                    .y = self.pos.y,
-                },
-                .{ .x = 0, .y = 0 },
-                0.0,
-                .white,
-            );
-        }
+        rl.drawTexturePro(
+            self.texture,
+            .{
+                .x = 0,
+                .y = 0,
+                .width = textureWidth,
+                .height = textureHeight,
+            },
+            .{
+                .height = textureHeight,
+                .width = textureWidth,
+                .x = self.pos.x,
+                .y = self.pos.y,
+            },
+            .{ .x = 0, .y = 0 },
+            0.0,
+            .white,
+        );
     }
 
     pub fn drawPortrait(self: @This(), state: *s.State, dest: rl.Rectangle) void {

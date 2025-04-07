@@ -23,6 +23,31 @@ pub const State = struct {
     rand: std.Random,
     // a static collection of numbers, one per cell, to use as consistent values between maps for each game
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
+    messages: ?std.ArrayList([:0]const u8),
+
+    pub fn displayMessages(self: *@This(), decay: u8) bool {
+        if (self.messages == null or self.messages.?.items.len == 0) {
+            return false;
+        }
+        const last = self.messages.?.items.len - 1;
+        const msg = self.messages.?.items[last];
+        if (decay > 0) {
+            rl.drawText(
+                msg,
+                @as(i32, @intFromFloat(self.grid.getCenterPos().x - 50)),
+                @as(i32, @intFromFloat(self.grid.getCenterPos().y - 350)),
+                20,
+                rl.Color.init(255, 255, 255, decay),
+            );
+            return true;
+        }
+        if (decay == 0) {
+            std.debug.print("Done displaying {s}\n", .{msg});
+            _ = self.messages.?.pop();
+            return false;
+        }
+        return false;
+    }
 
     pub fn NextPhase(self: @This()) enums.GamePhase {
         var nextPhase: enums.GamePhase = .START;
@@ -49,9 +74,9 @@ pub const State = struct {
         }
     }
 
-    pub fn drawCurrentMapNode(self: *@This()) !void {
+    pub fn drawCurrentMapNode(self: *@This(), dt: f32) !void {
         if (self.map) |map| {
-            try map.nodes.items[self.currentNode].draw(self);
+            try map.nodes.items[self.currentNode].draw(self, dt);
         } else {
             std.debug.assert(false);
         }

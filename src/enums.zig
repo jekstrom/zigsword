@@ -10,11 +10,14 @@ pub const TextureType = enum(u8) {
     DUNGEONGROUND,
     OUTSIDEBACKGROUND,
     DUNGEONBACKGROUND,
+    SHOPBACKGROUND,
     GOODALTAR,
     EVILALTAR,
     GREENGOBLIN,
     REDGOBLIN,
+    SHOPCARD,
     D4,
+    D6,
 };
 
 pub const GamePhase = enum(u8) {
@@ -30,6 +33,7 @@ pub const GameMode = enum(u8) {
     WALKING,
     BATTLE,
     SHOP,
+    ADVENTURERDEATH,
     DONE,
 };
 
