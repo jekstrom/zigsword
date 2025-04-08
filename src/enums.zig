@@ -43,6 +43,10 @@ pub const Turn = enum(u8) {
     ADVENTURER,
     MONSTER,
     ENVIRONMENT,
+    PLAYERWAIT,
+    ADVENTURERWAIT,
+    MONSTERWAIT,
+    ENVIRONMENTWAIT,
 };
 
 pub const Alignment = enum(u8) {

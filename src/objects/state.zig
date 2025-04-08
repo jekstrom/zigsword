@@ -63,13 +63,22 @@ pub const State = struct {
     }
 
     pub fn NextTurn(self: *@This()) void {
+        // TODO: Better way to handle waiting in between turns?
         if (self.turn == .ENVIRONMENT) {
-            self.turn = .MONSTER;
+            self.turn = .ENVIRONMENTWAIT;
         } else if (self.turn == .MONSTER) {
-            self.turn = .PLAYER;
+            self.turn = .MONSTERWAIT;
         } else if (self.turn == .PLAYER) {
-            self.turn = .ADVENTURER;
+            self.turn = .PLAYERWAIT;
         } else if (self.turn == .ADVENTURER) {
+            self.turn = .ADVENTURERWAIT;
+        } else if (self.turn == .ENVIRONMENTWAIT) {
+            self.turn = .MONSTER;
+        } else if (self.turn == .MONSTERWAIT) {
+            self.turn = .PLAYER;
+        } else if (self.turn == .PLAYERWAIT) {
+            self.turn = .ADVENTURER;
+        } else if (self.turn == .ADVENTURERWAIT) {
             self.turn = .ENVIRONMENT;
         }
     }

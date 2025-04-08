@@ -521,6 +521,8 @@ pub fn main() anyerror!void {
     var playerMsgDecay: u8 = 255;
     var waitStart: f64 = 0.0;
     const waitSeconds: f64 = 2.0;
+    var turnWaitStart: f64 = 0.0;
+    const turnWaitSeconds: f64 = 1.5;
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -741,7 +743,12 @@ pub fn main() anyerror!void {
         }
 
         if (state.phase == .PLAY and state.mode == .BATTLE) {
-            try battle(&state, &waitStart);
+            try battle(
+                &state,
+                &waitStart,
+                &turnWaitStart,
+                turnWaitSeconds,
+            );
         }
 
         try currentMapNode.?.update(&state);
@@ -965,7 +972,7 @@ pub fn tutorial(
     }
 }
 
-pub fn battle(state: *s.State, waitStart: *f64) !void {
+pub fn battle(state: *s.State, waitStart: *f64, turnWaitStart: *f64, turnWaitSeconds: f64) !void {
     // combat
     const monster = try state.getMonster();
     if (monster != null) {
@@ -976,10 +983,17 @@ pub fn battle(state: *s.State, waitStart: *f64) !void {
             if (state.turn == .MONSTER) {
                 std.debug.print("Monster turn {s}\n", .{monster.?.name});
                 try monster.?.attack(state);
+                turnWaitStart.* = rl.getTime();
                 state.NextTurn();
             } else if (state.turn == .PLAYER) {
                 if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
                     try state.player.attack(state, monster.?);
+                    turnWaitStart.* = rl.getTime();
+                    state.NextTurn();
+                }
+            } else if (@intFromEnum(state.turn) >= 4) {
+                // Wait for a second before continuing
+                if (rl.getTime() - turnWaitStart.* > turnWaitSeconds) {
                     state.NextTurn();
                 }
             } else {
