@@ -12,6 +12,7 @@ pub const MapNode = struct {
     texture: ?rl.Texture,
     background: ?rl.Texture,
     monsters: ?std.ArrayList(mob.Monster),
+    monstersEntered: bool,
     altarEvent: ?altar.AlterWalkingEvent,
     shopItems: ?std.ArrayList(shop.ShopItem),
 
@@ -42,6 +43,7 @@ pub const MapNode = struct {
                     .health = 2,
                     .maxHealth = 2,
                     .damageRange = 25,
+                    .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
                     .messages = MonsterMessages.init(state.allocator),
                 });
@@ -55,6 +57,7 @@ pub const MapNode = struct {
                     .health = 4,
                     .maxHealth = 4,
                     .damageRange = 35,
+                    .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
                     .messages = MonsterMessages.init(state.allocator),
                 });
@@ -125,14 +128,34 @@ pub const MapNode = struct {
         try self.shopItems.?.append(shopItem);
     }
 
+    pub fn removeDeadMonsters(self: *@This()) void {
+        if (self.monsters != null) {
+            var removedCount: i32 = 0;
+            const prevLen = self.monsters.?.items.len;
+            for (0..self.monsters.?.items.len) |i| {
+                const monster = &self.monsters.?.items[i];
+                const hp = monster.health;
+                if (hp <= 0 and monster.dying) {
+                    removedCount += 1;
+                    _ = self.monsters.?.orderedRemove(i);
+                }
+            }
+
+            if (removedCount == @as(i32, @intCast(prevLen))) {
+                // All monsters removed.
+                self.monstersEntered = false;
+            }
+        }
+    }
+
     pub fn update(self: *@This(), state: *s.State) !void {
         if (self.monsters != null) {
             for (0..self.monsters.?.items.len) |i| {
-                const monster = self.monsters.?.items[i];
+                var monster = &self.monsters.?.items[i];
                 const gold = monster.gold;
                 const hp = monster.health;
-                if (hp <= 0) {
-                    _ = self.monsters.?.orderedRemove(i);
+                if (hp <= 0 and !monster.dying) {
+                    monster.dying = true;
                     state.player.gold += gold;
                 }
             }
@@ -235,6 +258,14 @@ pub const MapNode = struct {
 
         if (self.altarEvent) |evt| {
             evt.draw(state);
+        }
+
+        if (self.monsters != null and self.monsters.?.items.len > 0) {
+            const mobs = self.monsters.?;
+            for (0..mobs.items.len) |i| {
+                self.monstersEntered = mobs.items[i].enter(state, dt);
+                mobs.items[i].draw(state);
+            }
         }
 
         if (self.type == .SHOP) {

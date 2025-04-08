@@ -269,6 +269,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .type = nodeType,
                 .texture = state.textureMap.get(.OUTSIDEGROUND),
                 .background = state.textureMap.get(.OUTSIDEBACKGROUND),
+                .monstersEntered = false,
                 .monsters = null,
                 .altarEvent = null,
                 .shopItems = null,
@@ -282,6 +283,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .texture = state.textureMap.get(.DUNGEONGROUND),
                 .background = state.textureMap.get(.DUNGEONBACKGROUND),
                 .monsters = MonsterList.init(state.allocator),
+                .monstersEntered = false,
                 .altarEvent = null,
                 .shopItems = null,
             };
@@ -293,6 +295,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .type = nodeType,
                 .texture = state.textureMap.get(.DUNGEONGROUND),
                 .background = state.textureMap.get(.SHOPBACKGROUND),
+                .monstersEntered = false,
                 .monsters = null,
                 .altarEvent = null,
                 .shopItems = ShopItems.init(state.allocator),
@@ -516,6 +519,8 @@ pub fn main() anyerror!void {
     var decay: u8 = 255;
     var monsterMsgDecay: u8 = 255;
     var playerMsgDecay: u8 = 255;
+    var waitStart: f64 = 0.0;
+    const waitSeconds: f64 = 2.0;
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -641,7 +646,6 @@ pub fn main() anyerror!void {
             state.mode = .WALKING;
         }
 
-        var monstersEntered = false;
         const currentMapNode = try state.getCurrentMapNode();
 
         if (currentMapNode) |cn| {
@@ -654,18 +658,12 @@ pub fn main() anyerror!void {
         if (entered and state.phase == .PLAY and state.mode != .PAUSE and state.mode != .DONE and (state.mode == .WALKING or state.mode == .BATTLE)) {
             if (currentMapNode) |cn| {
                 if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-                    const mobs = cn.monsters.?;
-                    for (0..mobs.items.len) |i| {
-                        monstersEntered = mobs.items[i].enter(&state, dt);
-                        mobs.items[i].draw(&state);
-                    }
+                    // battle
                 } else if (cn.altarEvent != null) {
                     try cn.altarEvent.?.handle(&state);
                     if (cn.altarEvent.?.baseEvent.handled) {
-                        const exited = state.adventurer.exit(&state, dt);
-                        if (exited) {
-                            state.mode = .DONE;
-                        }
+                        waitStart = rl.getTime();
+                        state.mode = .WAIT;
                     }
                 } else {
                     const exited = state.adventurer.exit(&state, dt);
@@ -676,7 +674,39 @@ pub fn main() anyerror!void {
             }
         }
 
-        if (monstersEntered) {
+        if (currentMapNode) |cn| {
+            if (cn.monsters) |mobs| {
+                for (0..mobs.items.len) |i| {
+                    const monsterMessageDisplayed = mobs.items[i].displayMessages(
+                        monsterMsgDecay,
+                        dt * @as(f32, @floatFromInt(monsterMsgDecay)),
+                    );
+                    if (monsterMsgDecay == 0) {
+                        monsterMsgDecay = 255;
+                    }
+
+                    if (monsterMessageDisplayed) {
+                        const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
+                        const rs = @subWithOverflow(monsterMsgDecay, ddiff);
+                        if (rs[1] != 0) {
+                            monsterMsgDecay = 0;
+                        } else {
+                            monsterMsgDecay -= ddiff;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (state.mode == .WAIT and rl.getTime() - waitStart >= waitSeconds) {
+            const exited = state.adventurer.exit(&state, dt);
+            if (exited) {
+                currentMapNode.?.removeDeadMonsters();
+                state.mode = .DONE;
+            }
+        }
+
+        if (state.mode != .WAIT and currentMapNode.?.monstersEntered) {
             state.mode = .BATTLE;
         }
 
@@ -711,7 +741,7 @@ pub fn main() anyerror!void {
         }
 
         if (state.phase == .PLAY and state.mode == .BATTLE) {
-            try battle(&state, dt);
+            try battle(&state, &waitStart);
         }
 
         try currentMapNode.?.update(&state);
@@ -747,30 +777,6 @@ pub fn main() anyerror!void {
                 playerMsgDecay = 0;
             } else {
                 playerMsgDecay -= ddiff;
-            }
-        }
-
-        if (currentMapNode) |cn| {
-            if (cn.monsters) |mobs| {
-                for (0..mobs.items.len) |i| {
-                    const monsterMessageDisplayed = mobs.items[i].displayMessages(
-                        monsterMsgDecay,
-                        dt * @as(f32, @floatFromInt(monsterMsgDecay)),
-                    );
-                    if (monsterMsgDecay == 0) {
-                        monsterMsgDecay = 255;
-                    }
-
-                    if (monsterMessageDisplayed) {
-                        const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
-                        const rs = @subWithOverflow(monsterMsgDecay, ddiff);
-                        if (rs[1] != 0) {
-                            monsterMsgDecay = 0;
-                        } else {
-                            monsterMsgDecay -= ddiff;
-                        }
-                    }
-                }
             }
         }
 
@@ -959,26 +965,26 @@ pub fn tutorial(
     }
 }
 
-pub fn battle(state: *s.State, dt: f32) !void {
+pub fn battle(state: *s.State, waitStart: *f64) !void {
     // combat
     const monster = try state.getMonster();
-    if (monster == null) {
-        const exited = state.adventurer.exit(state, dt);
-        if (exited) {
-            state.mode = .DONE;
-        }
-    } else {
-        if (state.turn == .MONSTER) {
-            std.debug.print("Monster turn {s}\n", .{monster.?.name});
-            try monster.?.attack(state);
-            state.NextTurn();
-        } else if (state.turn == .PLAYER) {
-            if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
-                try state.player.attack(state, monster.?);
+    if (monster != null) {
+        if (monster.?.dying) {
+            waitStart.* = rl.getTime();
+            state.mode = .WAIT;
+        } else {
+            if (state.turn == .MONSTER) {
+                std.debug.print("Monster turn {s}\n", .{monster.?.name});
+                try monster.?.attack(state);
+                state.NextTurn();
+            } else if (state.turn == .PLAYER) {
+                if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
+                    try state.player.attack(state, monster.?);
+                    state.NextTurn();
+                }
+            } else {
                 state.NextTurn();
             }
-        } else {
-            state.NextTurn();
         }
     }
 }

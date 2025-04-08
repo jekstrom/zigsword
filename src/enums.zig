@@ -35,6 +35,7 @@ pub const GameMode = enum(u8) {
     SHOP,
     ADVENTURERDEATH,
     DONE,
+    WAIT,
 };
 
 pub const Turn = enum(u8) {

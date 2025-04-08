@@ -11,6 +11,7 @@ pub const Monster = struct {
     health: u32,
     maxHealth: u8,
     damageRange: u8,
+    dying: bool,
     gold: u8,
     messages: ?std.ArrayList([:0]const u8),
 
@@ -88,7 +89,7 @@ pub const Monster = struct {
     pub fn draw(self: @This(), state: *s.State) void {
         const textureWidth = 128;
         const textureHeight = 128;
-        if (self.health <= 0) {
+        if (self.health <= 0 and !self.dying) {
             return;
         }
 
@@ -153,6 +154,19 @@ pub const Monster = struct {
                 },
                 .{ .x = 0, .y = 0 },
                 0.0,
+                .red,
+            );
+        } else {
+            rl.drawLineEx(
+                .{ .x = self.pos.x, .y = self.pos.y },
+                .{ .x = self.pos.x + 128, .y = self.pos.y + 128 },
+                5.0,
+                .red,
+            );
+            rl.drawLineEx(
+                .{ .x = self.pos.x, .y = self.pos.y + 128 },
+                .{ .x = self.pos.x + 128, .y = self.pos.y },
+                5.0,
                 .red,
             );
         }

@@ -66,24 +66,24 @@ pub const Player = struct {
             monster.health = 0;
         } else {
             monster.health -= @as(u32, @intCast(damageScaled));
-            if (monster.messages != null) {
-                var floatLog: f16 = 1.0;
-                if (damageScaled > 0) {
-                    floatLog = @floor(@log10(@as(f16, @floatFromInt(damageScaled))) + 1.0);
-                }
-                const digits: u64 = @as(u64, @intFromFloat(floatLog));
-                const buffer = try state.allocator.allocSentinel(
-                    u8,
-                    digits,
-                    0,
-                );
-                _ = std.fmt.bufPrint(
-                    buffer,
-                    "{d}",
-                    .{damageScaled},
-                ) catch "";
-                try monster.messages.?.append(buffer);
+        }
+        if (monster.messages != null) {
+            var floatLog: f16 = 1.0;
+            if (damageScaled > 0) {
+                floatLog = @floor(@log10(@as(f16, @floatFromInt(damageScaled))) + 1.0);
             }
+            const digits: u64 = @as(u64, @intFromFloat(floatLog));
+            const buffer = try state.allocator.allocSentinel(
+                u8,
+                digits,
+                0,
+            );
+            _ = std.fmt.bufPrint(
+                buffer,
+                "{d}",
+                .{damageScaled},
+            ) catch "";
+            try monster.messages.?.append(buffer);
         }
     }
 
