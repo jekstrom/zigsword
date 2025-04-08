@@ -156,32 +156,8 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
 
     for (0..state.player.dice.?.items.len) |i| {
         const die = state.player.dice.?.items[i];
-        var texture: ?rl.Texture = null;
-        if (die.sides == 4) {
-            texture = state.textureMap.get(.D4);
-        } else if (die.sides == 6) {
-            texture = state.textureMap.get(.D6);
-        }
-        if (texture) |txt| {
-            rl.drawTexturePro(
-                txt,
-                .{
-                    .x = 0,
-                    .y = 0,
-                    .width = 128,
-                    .height = 128,
-                },
-                .{
-                    .x = 250 + 150 + 70 + 50 + (50 * @as(f32, @floatFromInt(i))),
-                    .y = (topUI + 20) - 10,
-                    .width = 64,
-                    .height = 64,
-                },
-                .{ .x = 0, .y = 0 },
-                0.0,
-                .white,
-            );
-        }
+        // TODO: make a layout manager for ui elements.
+        die.draw(state);
     }
 
     var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
@@ -417,6 +393,7 @@ pub fn main() anyerror!void {
     var prng = std.Random.DefaultPrng.init(seed);
     const rand = prng.random();
 
+    // Init state
     var state: s.State = .{
         .phase = .START,
         .mode = .TUTORIAL,
@@ -433,6 +410,7 @@ pub fn main() anyerror!void {
             .dice = null,
             .durability = 100,
             .gold = 0,
+            .maxSelectedDice = 3,
             .messages = null,
         },
         .adventurer = .{
@@ -469,46 +447,82 @@ pub fn main() anyerror!void {
         }
     }
 
+    // Set up initial grid to get correct positioning
     state.grid.draw(&state);
 
+    // Generate first maps
     try generateNextMap(&state, "Start", .WALKING);
     try generateNextMap(&state, "Dungeon", .DUNGEON);
     try generateNextMap(&state, "Shop", .SHOP);
-    try generateNextMap(&state, "Dungeon 2", .DUNGEON);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
     std.debug.print(" {s}\n", .{state.map.?.name});
 
     const groundY = state.grid.getGroundY();
+    // Set aside memory for player's name
     var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
 
     state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
+
+    // Keep track of new adventurer's dialog progress
     var tutorialStep: u4 = 0;
 
+    // Set up memory for player state
     state.player.altarHistory = AltarHistoryList.init(allocator);
     state.player.dice = DiceList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
+
+    const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
+
+    // Add initial player dice
     var dcount: u8 = 0;
-    while (dcount < 4) : (dcount += 1) {
+    const numd6: u8 = 2;
+    const numd4: u8 = 4 + numd6;
+    var xoffset: f32 = 50.0;
+    while (dcount < numd6) : (dcount += 1) {
+        xoffset = 50 * @as(f32, @floatFromInt(dcount));
+        try state.player.dice.?.append(.{
+            .name = "Basic d6",
+            .sides = 6,
+            .texture = state.textureMap.get(.D6),
+            .hovered = false,
+            .selected = false,
+            .index = dcount,
+            .pos = .{
+                .x = state.grid.getWidth() - 550 + xoffset,
+                .y = topUI + 10,
+            },
+        });
+    }
+    xoffset += 50;
+    while (dcount < numd4) : (dcount += 1) {
+        xoffset = 50 * @as(f32, @floatFromInt(dcount));
         try state.player.dice.?.append(.{
             .name = "Basic d4",
             .sides = 4,
             .texture = state.textureMap.get(.D4),
+            .hovered = false,
+            .selected = false,
+            .index = dcount + numd6,
+            .pos = .{
+                .x = state.grid.getWidth() - 550 + xoffset,
+                .y = topUI + 10,
+            },
         });
     }
+
+    // Keep track of message decay
     var decay: u8 = 255;
     var monsterMsgDecay: u8 = 255;
     var playerMsgDecay: u8 = 255;
 
-    rl.setTargetFPS(60); // Set our game to run at 60 frames-per-second
-    //--------------------------1------------------------------------------------------------
+    rl.setTargetFPS(60);
+    //--------------------------------------------------------------------------------------
 
-    // Main game loop
-    while (!rl.windowShouldClose()) { // Detect window close button or ESC key
+    // Main game loop, detect window close button or ESC key
+    while (!rl.windowShouldClose()) {
         // Update
-        //----------------------------------------------------------------------------------
-        // TODO: Update your variables here
         //----------------------------------------------------------------------------------
         const gameTime = rl.getTime();
         const dt = rl.getFrameTime();
@@ -519,12 +533,14 @@ pub fn main() anyerror!void {
             break;
         }
 
-        const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
+        // used for positioning elements
         const uiHeight = screenHeight - topUI;
         const uiRect: rl.Rectangle = .{ .height = uiHeight, .width = screenWidth, .x = 0, .y = topUI };
 
+        // Keep track of if the adventurer has entered the map
         var entered = false;
         var playerRotation: f32 = 180.0;
+
         if (state.mode != .SHOP) {
             state.player.pos.x = screenWidth / 2;
             if (state.player.pos.y < groundY + 25) {
@@ -685,15 +701,13 @@ pub fn main() anyerror!void {
             state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
         }
 
-        if (state.phase == .PLAY) {
-            state.player.update(&state);
-        }
-
-        state.player.draw(&state, playerRotation);
         state.grid.draw(&state);
-
+        state.player.draw(&state, playerRotation);
         if (state.adventurer.health > 0) {
             state.adventurer.draw(&state);
+        }
+        if (state.phase == .PLAY) {
+            try state.player.update(&state);
         }
 
         if (state.phase == .PLAY and state.mode == .BATTLE) {
@@ -718,7 +732,10 @@ pub fn main() anyerror!void {
             }
         }
 
-        const playerMessageDisplayed = state.player.displayMessages(playerMsgDecay);
+        const playerMessageDisplayed = state.player.displayMessages(
+            playerMsgDecay,
+            dt * @as(f32, @floatFromInt(playerMsgDecay)),
+        );
         if (playerMsgDecay == 0) {
             playerMsgDecay = 255;
         }
@@ -736,7 +753,10 @@ pub fn main() anyerror!void {
         if (currentMapNode) |cn| {
             if (cn.monsters) |mobs| {
                 for (0..mobs.items.len) |i| {
-                    const monsterMessageDisplayed = mobs.items[i].displayMessages(monsterMsgDecay);
+                    const monsterMessageDisplayed = mobs.items[i].displayMessages(
+                        monsterMsgDecay,
+                        dt * @as(f32, @floatFromInt(monsterMsgDecay)),
+                    );
                     if (monsterMsgDecay == 0) {
                         monsterMsgDecay = 255;
                     }
@@ -794,9 +814,9 @@ pub fn main() anyerror!void {
                 );
             }
         }
-        //----------------------------------------------------------------------------------
     }
 
+    // Clean up
     const it = state.textureMap.keyIterator();
     for (0..it.len) |i| {
         const textureKey = it.items[i];

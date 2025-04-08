@@ -8,7 +8,8 @@ pub const Monster = struct {
     pos: rl.Vector2,
     nameKnown: bool,
     speed: f32,
-    health: u8,
+    health: u32,
+    maxHealth: u8,
     damageRange: u8,
     gold: u8,
     messages: ?std.ArrayList([:0]const u8),
@@ -61,7 +62,7 @@ pub const Monster = struct {
         }
     }
 
-    pub fn displayMessages(self: *@This(), decay: u8) bool {
+    pub fn displayMessages(self: *@This(), decay: u8, dt: f32) bool {
         if (self.messages == null or self.messages.?.items.len == 0) {
             return false;
         }
@@ -70,8 +71,8 @@ pub const Monster = struct {
         if (decay > 0) {
             rl.drawText(
                 msg,
-                @as(i32, @intFromFloat(self.pos.x + 5)),
-                @as(i32, @intFromFloat(self.pos.y - 50)),
+                @as(i32, @intFromFloat(self.pos.x + 62)),
+                @as(i32, @intFromFloat(self.pos.y - 65 + (10 * dt))),
                 20,
                 rl.Color.init(255, 50, 50, decay),
             );
@@ -138,10 +139,15 @@ pub const Monster = struct {
         }
 
         if (self.health > 0) {
+            // Draw healthbar, normalized by max health = 100%
+            const healthPerc: f32 = rl.math.normalize(@as(f32, @floatFromInt(self.health)), 0.0, @as(
+                f32,
+                @floatFromInt(self.maxHealth),
+            )) * 100.0;
             rl.drawRectanglePro(
                 .{
                     .height = 7,
-                    .width = @as(f32, @floatFromInt(self.health)),
+                    .width = healthPerc,
                     .x = self.pos.x + 8,
                     .y = self.pos.y - 5,
                 },

@@ -153,6 +153,10 @@ pub const Grid = struct {
         return groundRowNum * @as(f32, @floatFromInt(self.cellSize));
     }
 
+    pub fn topUI(self: @This()) f32 {
+        return self.cells[groundRowNum][0].pos.y + @as(f32, @floatFromInt(self.cellSize));
+    }
+
     pub fn getWidth(self: @This()) f32 {
         return numCols * @as(f32, @floatFromInt(self.cellSize));
     }

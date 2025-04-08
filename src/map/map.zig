@@ -39,7 +39,8 @@ pub const MapNode = struct {
                     .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                     .nameKnown = false,
                     .speed = 0.45,
-                    .health = 100,
+                    .health = 2,
+                    .maxHealth = 2,
                     .damageRange = 25,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
                     .messages = MonsterMessages.init(state.allocator),
@@ -51,7 +52,8 @@ pub const MapNode = struct {
                     .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                     .nameKnown = false,
                     .speed = 0.25,
-                    .health = 150,
+                    .health = 4,
+                    .maxHealth = 4,
                     .damageRange = 35,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
                     .messages = MonsterMessages.init(state.allocator),
@@ -82,6 +84,10 @@ pub const MapNode = struct {
                     .name = "d6",
                     .sides = 6,
                     .texture = state.textureMap.get(.D6),
+                    .hovered = false,
+                    .selected = false,
+                    .index = 0,
+                    .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
                 },
                 .price = 4,
                 .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
@@ -94,6 +100,10 @@ pub const MapNode = struct {
                     .name = "Crit d4",
                     .sides = 4,
                     .texture = state.textureMap.get(.D4),
+                    .hovered = false,
+                    .selected = false,
+                    .index = 1,
+                    .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
                 },
                 .price = 4,
                 .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
@@ -131,7 +141,7 @@ pub const MapNode = struct {
         if (self.type == .SHOP and self.shopItems != null) {
             const mousepos = rl.getMousePosition();
             for (0..self.shopItems.?.items.len) |i| {
-                const item = &self.shopItems.?.items[i];
+                var item = &self.shopItems.?.items[i];
                 if (item.purchased) {
                     continue;
                 }
@@ -188,6 +198,8 @@ pub const MapNode = struct {
                     );
                 }
                 if (rl.isMouseButtonPressed(rl.MouseButton.left) and hover) {
+                    const lastDieIndex = state.player.dice.?.items.len;
+                    item.die.?.index = lastDieIndex;
                     const purchased = try state.player.purchaseItem(item.*);
                     if (purchased) {
                         item.purchased = true;
