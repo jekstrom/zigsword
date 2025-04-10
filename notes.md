@@ -4,7 +4,26 @@
 * determine what your alignment is
 * random chance to get a result, either good or bad
 
+# character ideas
+* warrior
+    - more health and damage
+    - starting character
+* thief
+    - can skip minion fights to go straight to the boss
+    - powerful first attack
+* ranger
+    - throws sword
+    - matches colors of dice
+* sorcerress
+    - yatzee style dice
+* paladin
+    - gains a new die at start of combat
         
+# other ideas
+* art direction should be like conan the barbarian, 70's style pulp fantasy
+* boss fights should be like 70's sword and sorcery movie posters
+* good ending - ascend into heaven, mountain tileset, conquer your demons (selfishness, lust, greed, etc)
+* evil ending - descend into hell, volcanic tileset, slay your conscience (compassion, morality, 'humanity', duty, virtue) 
 
 # what is in a random event?
 * treasure    (consumables or gold)

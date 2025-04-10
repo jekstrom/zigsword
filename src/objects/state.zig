@@ -4,12 +4,17 @@ const enums = @import("../enums.zig");
 const m = @import("../map/map.zig");
 const g = @import("grid.zig");
 const mob = @import("monster.zig");
+const sm = @import("../states/smState.zig");
+const WalkingState = @import("../states/walking.zig").WalkingState;
+const BattleState = @import("../states/battle.zig").BattleState;
+const ShopState = @import("../states/shop.zig").ShopState;
 
 pub var DEBUG_MODE = false;
 
 pub const State = struct {
     player: @import("player.zig").Player,
     adventurer: @import("adventurer.zig").Adventurer,
+    newName: *[10:0]u8,
     grid: g.Grid,
     mousePos: rl.Vector2,
     textureMap: std.AutoHashMap(enums.TextureType, rl.Texture),
@@ -24,6 +29,33 @@ pub const State = struct {
     // a static collection of numbers, one per cell, to use as consistent values between maps for each game
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
     messages: ?std.ArrayList([:0]const u8),
+    stateMachine: ?*@import("../states/stateMachine.zig").StateMachine,
+
+    pub fn goToNextMapNode(self: *@This()) void {
+        if (self.map) |map| {
+            const numnodes = map.nodes.items.len;
+            if ((self.currentNode + 1) >= numnodes) {
+                self.currentNode = 0;
+                std.debug.print("Resetting map node {d}\n", .{self.currentNode});
+                self.goToNextMap();
+            } else {
+                self.currentNode += 1;
+                std.debug.print("Going to map node {d}\n", .{self.currentNode});
+            }
+        } else {
+            std.debug.print("no map found\n", .{});
+            std.debug.assert(false);
+        }
+    }
+
+    pub fn goToNextMap(self: *@This()) void {
+        if (self.map.?.nextMap) |nm| {
+            self.map = nm.*;
+            self.currentMap = self.map.?.currentMapCount;
+            self.currentNode = 0;
+            self.grid.clearTextures();
+        }
+    }
 
     pub fn displayMessages(self: *@This(), decay: u8) bool {
         if (self.messages == null or self.messages.?.items.len == 0) {
@@ -112,10 +144,81 @@ pub const State = struct {
         return null;
     }
 
+    pub fn isShop(self: *@This()) !bool {
+        const currentMapNode = try self.getCurrentMapNode();
+        if (currentMapNode) |cn| {
+            return cn.type == .SHOP;
+        }
+        return false;
+    }
+
     pub fn getConsistentRandomNumber(self: *@This(), row: usize, col: usize, lowerBound: u16, upperBound: u16) u16 {
         const num = self.randomNumbers[row][col];
         const normalized = @as(f32, @floatFromInt(num)) / 65535.0;
         const scaled: f32 = @as(f32, @floatFromInt(lowerBound)) + (normalized * (@as(f32, @floatFromInt(upperBound)) - @as(f32, @floatFromInt(lowerBound))));
         return @as(u16, @intFromFloat(@round(scaled)));
+    }
+
+    pub fn update(self: *@This()) !void {
+        if (self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
+            // do state transition
+            const curState = self.stateMachine.?.state.?;
+            const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
+            if (nextState != null) {
+                try self.stateMachine.?.setState(nextState.?, self);
+            } else if (curState.smType == .WALKING) {
+                try self.stateMachine.?.clearState();
+                std.debug.print("TRANSINTION FROM WALKING\n\n", .{});
+                // Next state is null and current state is WALKING, go to next map node.
+                self.goToNextMapNode();
+                const monster = try self.getMonster();
+                var nextSmState: ?*sm.SMState = null;
+                if (monster != null) {
+                    var battleState: @import("../states/battle.zig").BattleState = .{
+                        .nextState = null,
+                        .isComplete = false,
+                        .startTime = rl.getTime(),
+                    };
+                    const battleSmState = try battleState.smState(&self.allocator);
+                    nextSmState = battleSmState;
+                } else if (try self.isShop()) {
+                    var shopState: @import("../states/shop.zig").ShopState = .{
+                        .nextState = null,
+                        .isComplete = false,
+                        .startTime = rl.getTime(),
+                    };
+                    const shopSmState = try shopState.smState(&self.allocator);
+                    nextSmState = shopSmState;
+                } else {
+                    var walkingState = try self.allocator.create(WalkingState);
+                    walkingState.nextState = null;
+                    walkingState.isComplete = false;
+                    walkingState.startTime = rl.getTime();
+                    const walkingSmState = try walkingState.smState(&self.allocator);
+                    nextSmState = walkingSmState;
+                }
+
+                if (nextSmState) |ns| {
+                    try self.stateMachine.?.setState(ns, self);
+                } else {
+                    // There should always be a next state to transition to.
+                    std.debug.print("No next state found!\n", .{});
+                    std.debug.assert(false);
+                }
+            } else if (curState.smType == .TUTORIAL) {
+                // Handle initial walking state
+                var walkingState = try self.allocator.create(WalkingState);
+                walkingState.nextState = null;
+                walkingState.isComplete = false;
+                walkingState.startTime = rl.getTime();
+
+                const walkingSmState = try walkingState.smState(&self.allocator);
+                try self.stateMachine.?.setState(walkingSmState, self);
+            }
+        }
+
+        if (self.stateMachine != null and self.stateMachine.?.state != null) {
+            try self.stateMachine.?.state.?.update(self);
+        }
     }
 };

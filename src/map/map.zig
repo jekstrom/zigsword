@@ -15,6 +15,7 @@ pub const MapNode = struct {
     monstersEntered: bool,
     altarEvent: ?altar.AlterWalkingEvent,
     shopItems: ?std.ArrayList(shop.ShopItem),
+    stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
     pub fn print(self: @This()) void {
         std.debug.print(
@@ -149,6 +150,23 @@ pub const MapNode = struct {
     }
 
     pub fn update(self: *@This(), state: *s.State) !void {
+        // if (self.stateMachine != null and self.stateMachine.?.state.getIsComplete()) {
+        //     // do state transition
+        //     const nextState: ?*@import("../states/smState.zig").SMState = self.stateMachine.?.state.nextState;
+        //     if (nextState != null) {
+        //         std.debug.print("MapNode Next state: {}\n", .{nextState.?.smType});
+        //         try self.stateMachine.?.setState(nextState.?, state);
+        //     } else if (self.stateMachine.?.state.smType == .WALKING) {
+        //         // Next state is null and current state is WALKING, go to next map node.
+
+        //         std.debug.print("MapNode Next state is null, going tone\n", .{});
+        //     }
+        // }
+
+        // if (self.stateMachine != null) {
+        //     try self.stateMachine.?.state.update(state);
+        // }
+
         if (self.monsters != null) {
             for (0..self.monsters.?.items.len) |i| {
                 var monster = &self.monsters.?.items[i];

@@ -20,6 +20,7 @@ pub const Player = struct {
     gold: i32,
     maxSelectedDice: u8,
     messages: ?std.ArrayList([:0]const u8),
+    stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) !void {
         // self.durability -= 20;
@@ -103,6 +104,21 @@ pub const Player = struct {
 
     // Update based on actions player has taken.
     pub fn update(self: *@This(), state: *s.State) !void {
+        // if (self.stateMachine != null and self.stateMachine.?.state.getIsComplete()) {
+        //     // do state transition
+        //     const nextState: ?*@import("../states/smState.zig").SMState = self.stateMachine.?.state.nextState;
+        //     if (nextState != null) {
+        //         std.debug.print("Player Next state: {}\n", .{nextState.?.smType});
+        //         try self.stateMachine.?.setState(nextState.?, state);
+        //     } else {
+        //         std.debug.print("Player Next state is null\n", .{});
+        //     }
+        // }
+
+        // if (self.stateMachine != null) {
+        //     try self.stateMachine.?.state.update(state);
+        // }
+
         if (self.dice == null and (self.altarHistory == null or self.altarHistory.?.items.len == 0)) {
             return;
         }

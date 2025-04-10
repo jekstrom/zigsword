@@ -14,6 +14,7 @@ const enums = @import("enums.zig");
 const d = @import("die.zig");
 const shop = @import("objects/shopitem.zig");
 const textures = @import("textures.zig");
+const sm = @import("states/smState.zig");
 
 pub fn drawUi(state: *s.State, topUI: f32) void {
     if (state.textureMap.get(.SwordIcon)) |texture| {
@@ -176,34 +177,6 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
     );
 }
 
-pub fn concatStrings(allocator: std.mem.Allocator, str1: [:0]const u8, str2: [:0]const u8) ![:0]u8 {
-    const len1 = str1.len;
-    const len2 = str2.len;
-
-    var chars1: usize = 0;
-    for (0..len1) |i| {
-        if (str1[i] > 0) {
-            chars1 += 1;
-        }
-    }
-
-    var chars2: usize = 0;
-    for (0..len2) |i| {
-        if (str2[i] > 0) {
-            chars2 += 1;
-        }
-    }
-
-    const totalContentLen = chars1 + chars2;
-
-    const result = try allocator.allocSentinel(u8, totalContentLen, 0);
-    errdefer allocator.free(result);
-
-    @memcpy(result.ptr[0..chars1], str1.ptr[0..chars1]);
-    @memcpy(result.ptr[chars1 .. chars1 + chars2], str2.ptr[0..chars2]);
-    return result;
-}
-
 pub fn generateAdventurer(state: *s.State) void {
     const adventurer: a.Adventurer = .{
         .health = 100,
@@ -273,6 +246,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .monsters = null,
                 .altarEvent = null,
                 .shopItems = null,
+                .stateMachine = null,
             };
             try outsideNode.init(state);
             try newMap.addMapNode(outsideNode);
@@ -286,6 +260,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .monstersEntered = false,
                 .altarEvent = null,
                 .shopItems = null,
+                .stateMachine = null,
             };
             try dungeonNode.init(state);
             try newMap.addMapNode(dungeonNode);
@@ -299,6 +274,7 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
                 .monsters = null,
                 .altarEvent = null,
                 .shopItems = ShopItems.init(state.allocator),
+                .stateMachine = null,
             };
             try shopNode.init(state);
             try newMap.addMapNode(shopNode);
@@ -329,31 +305,31 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
     }
 }
 
-pub fn goToNextMap(state: *s.State) void {
-    if (state.map.?.nextMap) |nm| {
-        state.map = nm.*;
-        state.currentMap = state.map.?.currentMapCount;
-        state.currentNode = 0;
-        state.grid.clearTextures();
-    }
-}
+// pub fn goToNextMap(state: *s.State) void {
+//     if (state.map.?.nextMap) |nm| {
+//         state.map = nm.*;
+//         state.currentMap = state.map.?.currentMapCount;
+//         state.currentNode = 0;
+//         state.grid.clearTextures();
+//     }
+// }
 
-pub fn goToNextMapNode(state: *s.State) void {
-    if (state.map) |map| {
-        const numnodes = map.nodes.items.len;
-        if ((state.currentNode + 1) >= numnodes) {
-            state.currentNode = 0;
-            std.debug.print("Resetting map node {d}\n", .{state.currentNode});
-            goToNextMap(state);
-        } else {
-            state.currentNode += 1;
-            std.debug.print("Going to map node {d}\n", .{state.currentNode});
-        }
-    } else {
-        std.debug.print("no map found\n", .{});
-        std.debug.assert(false);
-    }
-}
+// pub fn goToNextMapNode(state: *s.State) void {
+//     if (state.map) |map| {
+//         const numnodes = map.nodes.items.len;
+//         if ((state.currentNode + 1) >= numnodes) {
+//             state.currentNode = 0;
+//             std.debug.print("Resetting map node {d}\n", .{state.currentNode});
+//             goToNextMap(state);
+//         } else {
+//             state.currentNode += 1;
+//             std.debug.print("Going to map node {d}\n", .{state.currentNode});
+//         }
+//     } else {
+//         std.debug.print("no map found\n", .{});
+//         std.debug.assert(false);
+//     }
+// }
 
 pub fn main() anyerror!void {
     // Initialization
@@ -396,6 +372,9 @@ pub fn main() anyerror!void {
     var prng = std.Random.DefaultPrng.init(seed);
     const rand = prng.random();
 
+    // Set aside memory for player's name
+    var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
+
     // Init state
     var state: s.State = .{
         .phase = .START,
@@ -403,6 +382,8 @@ pub fn main() anyerror!void {
         .turn = .ENVIRONMENT,
         .currentMap = 0,
         .currentNode = 0,
+        .newName = &newName,
+        .stateMachine = null,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
             .equiped = false,
@@ -415,6 +396,7 @@ pub fn main() anyerror!void {
             .gold = 0,
             .maxSelectedDice = 3,
             .messages = null,
+            .stateMachine = null,
         },
         .adventurer = .{
             .name = "Zig",
@@ -463,8 +445,6 @@ pub fn main() anyerror!void {
     std.debug.print(" {s}\n", .{state.map.?.name});
 
     const groundY = state.grid.getGroundY();
-    // Set aside memory for player's name
-    var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
 
     state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
 
@@ -475,6 +455,21 @@ pub fn main() anyerror!void {
     state.player.altarHistory = AltarHistoryList.init(allocator);
     state.player.dice = DiceList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
+
+    var tutorialState: @import("states/tutorial.zig").TutorialState = .{
+        .nextState = null,
+        .tutorialStep = &tutorialStep,
+        .isComplete = false,
+        .startTime = rl.getTime(),
+    };
+    const tutorialSmState: *sm.SMState = try tutorialState.smState(&allocator);
+
+    var statemachine = try allocator.create(@import("states/stateMachine.zig").StateMachine);
+    statemachine.allocator = &allocator;
+    statemachine.state = tutorialSmState;
+    defer allocator.destroy(statemachine);
+
+    state.stateMachine = statemachine;
 
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
 
@@ -517,10 +512,10 @@ pub fn main() anyerror!void {
 
     // Keep track of message decay
     var decay: u8 = 255;
-    var monsterMsgDecay: u8 = 255;
+    // var monsterMsgDecay: u8 = 255;
     var playerMsgDecay: u8 = 255;
     var waitStart: f64 = 0.0;
-    const waitSeconds: f64 = 2.0;
+    // const waitSeconds: f64 = 2.0;
     var turnWaitStart: f64 = 0.0;
     const turnWaitSeconds: f64 = 1.5;
 
@@ -616,12 +611,12 @@ pub fn main() anyerror!void {
             tutorialStep = 0;
         }
 
-        if (state.mode == .SHOP) {
-            if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
-                goToNextMap(&state);
-                state.mode = .WALKING;
-            }
-        }
+        // if (state.mode == .SHOP) {
+        //     if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
+        //         goToNextMap(&state);
+        //         state.mode = .WALKING;
+        //     }
+        // }
 
         if (!entered and state.phase == .START) {
             rl.drawText(
@@ -633,114 +628,127 @@ pub fn main() anyerror!void {
             );
         }
 
-        if (entered and state.mode == .TUTORIAL and tutorialStep < 4) {
-            try tutorial(
-                &state,
-                screenWidth,
-                screenHeight,
-                groundY,
-                &tutorialStep,
-                &newName,
-                &allocator,
-            );
-        }
-        if (state.mode == .TUTORIAL and tutorialStep >= 4) {
-            state.mode = .WALKING;
-        }
+        // if (entered and state.mode == .TUTORIAL and tutorialStep < 4) {
+        //     // try tutorial(
+        //     //     &state,
+        //     //     screenWidth,
+        //     //     screenHeight,
+        //     //     groundY,
+        //     //     &tutorialStep,
+        //     //     &newName,
+        //     //     &allocator,
+        //     // );
+        // }
+        // if (state.mode == .TUTORIAL and tutorialStep >= 4) {
+        //     state.mode = .WALKING;
+        // }
 
         const currentMapNode = try state.getCurrentMapNode();
+        // if (currentMapNode) |cn| {
+        //     if (cn.monsters != null and cn.monsters.?.items.len > 0) {
+        //         // go to battle state if monsters exists
+        //         var battleState: @import("states/battle.zig").BattleState = .{
+        //             .nextState = null,
+        //             .isComplete = false,
+        //             .startTime = rl.getTime(),
+        //         };
+        //         var battleSmState = battleState.smState();
+        //         try state.player.stateMachine.?.setState(&battleSmState, &state);
+        //     }
+        // }
 
-        if (currentMapNode) |cn| {
-            if (cn.type == .SHOP) {
-                state.adventurer.pos.x = -200;
-                state.mode = .SHOP;
-            }
-        }
+        // if (currentMapNode) |cn| {
+        //     if (cn.type == .SHOP) {
+        //         state.adventurer.pos.x = -200;
+        //         state.mode = .SHOP;
+        //     }
+        // }
 
-        if (entered and state.phase == .PLAY and state.mode != .PAUSE and state.mode != .DONE and (state.mode == .WALKING or state.mode == .BATTLE)) {
-            if (currentMapNode) |cn| {
-                if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-                    // battle
-                } else if (cn.altarEvent != null) {
-                    try cn.altarEvent.?.handle(&state);
-                    if (cn.altarEvent.?.baseEvent.handled) {
-                        waitStart = rl.getTime();
-                        state.mode = .WAIT;
-                    }
-                } else {
-                    const exited = state.adventurer.exit(&state, dt);
-                    if (exited) {
-                        state.mode = .DONE;
-                    }
-                }
-            }
-        }
+        // if (entered and state.phase == .PLAY and state.mode != .PAUSE and state.mode != .DONE and (state.mode == .WALKING or state.mode == .BATTLE)) {
+        //     if (currentMapNode) |cn| {
+        //         if (cn.monsters != null and cn.monsters.?.items.len > 0) {
+        //             // battle
+        //         } else if (cn.altarEvent != null) {
+        //             try cn.altarEvent.?.handle(&state);
+        //             if (cn.altarEvent.?.baseEvent.handled) {
+        //                 waitStart = rl.getTime();
+        //                 state.mode = .WAIT;
+        //             }
+        //         } else {
+        //             const exited = state.adventurer.exit(&state, dt);
+        //             if (exited) {
+        //                 state.mode = .DONE;
+        //             }
+        //         }
+        //     }
+        // }
 
-        if (currentMapNode) |cn| {
-            if (cn.monsters) |mobs| {
-                for (0..mobs.items.len) |i| {
-                    const monsterMessageDisplayed = mobs.items[i].displayMessages(
-                        monsterMsgDecay,
-                        dt * @as(f32, @floatFromInt(monsterMsgDecay)),
-                    );
-                    if (monsterMsgDecay == 0) {
-                        monsterMsgDecay = 255;
-                    }
+        // if (currentMapNode) |cn| {
+        //     if (cn.monsters) |mobs| {
+        //         for (0..mobs.items.len) |i| {
+        //             const monsterMessageDisplayed = mobs.items[i].displayMessages(
+        //                 monsterMsgDecay,
+        //                 dt * @as(f32, @floatFromInt(monsterMsgDecay)),
+        //             );
+        //             if (monsterMsgDecay == 0) {
+        //                 monsterMsgDecay = 255;
+        //             }
 
-                    if (monsterMessageDisplayed) {
-                        const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
-                        const rs = @subWithOverflow(monsterMsgDecay, ddiff);
-                        if (rs[1] != 0) {
-                            monsterMsgDecay = 0;
-                        } else {
-                            monsterMsgDecay -= ddiff;
-                        }
-                    }
-                }
-            }
-        }
+        //             if (monsterMessageDisplayed) {
+        //                 const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
+        //                 const rs = @subWithOverflow(monsterMsgDecay, ddiff);
+        //                 if (rs[1] != 0) {
+        //                     monsterMsgDecay = 0;
+        //                 } else {
+        //                     monsterMsgDecay -= ddiff;
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
-        if (state.mode == .WAIT and rl.getTime() - waitStart >= waitSeconds) {
-            const exited = state.adventurer.exit(&state, dt);
-            if (exited) {
-                currentMapNode.?.removeDeadMonsters();
-                state.mode = .DONE;
-            }
-        }
+        // if (state.mode == .WAIT and rl.getTime() - waitStart >= waitSeconds) {
+        //     const exited = state.adventurer.exit(&state, dt);
+        //     if (exited) {
+        //         currentMapNode.?.removeDeadMonsters();
+        //         state.mode = .DONE;
+        //     }
+        // }
 
-        if (state.mode != .WAIT and currentMapNode.?.monstersEntered) {
-            state.mode = .BATTLE;
-        }
+        // if (state.mode != .WAIT and currentMapNode.?.monstersEntered) {
+        //     state.mode = .BATTLE;
+        // }
 
-        // Handle exiting first map
-        if (state.phase == .START and entered and tutorialStep >= 4) {
-            const exited = state.adventurer.exit(&state, dt);
-            if (exited) {
-                state.mode = .DONE;
-                state.phase = state.NextPhase();
-            }
-        }
+        // // Handle exiting first map
+        // if (state.phase == .START and entered and tutorialStep >= 4) {
+        //     const exited = state.adventurer.exit(&state, dt);
+        //     if (exited) {
+        //         state.mode = .DONE;
+        //         state.phase = state.NextPhase();
+        //     }
+        // }
 
-        if (state.mode == .DONE) {
-            if (currentMapNode) |cn| {
-                if (cn.altarEvent != null) {
-                    cn.altarEvent.?.baseEvent.handled = false;
-                }
-                cn.print();
-            }
-            goToNextMapNode(&state);
-            state.mode = .WALKING;
-            state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
-        }
+        // if (state.mode == .DONE) {
+        //     if (currentMapNode) |cn| {
+        //         if (cn.altarEvent != null) {
+        //             cn.altarEvent.?.baseEvent.handled = false;
+        //         }
+        //         cn.print();
+        //     }
+        //     goToNextMapNode(&state);
+        //     state.mode = .WALKING;
+        //     state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
+        // }
 
         state.grid.draw(&state);
         state.player.draw(&state, playerRotation);
         if (state.adventurer.health > 0) {
             state.adventurer.draw(&state);
         }
-        if (state.phase == .PLAY) {
-            try state.player.update(&state);
-        }
+        // if (state.phase == .PLAY) {
+        //     try state.player.update(&state);
+        // }
+        try state.player.update(&state);
 
         if (state.phase == .PLAY and state.mode == .BATTLE) {
             try battle(
@@ -752,6 +760,7 @@ pub fn main() anyerror!void {
         }
 
         try currentMapNode.?.update(&state);
+        try state.update();
 
         drawUi(&state, topUI);
 
@@ -845,132 +854,132 @@ pub fn main() anyerror!void {
     }
 }
 
-pub fn tutorial(
-    state: *s.State,
-    screenWidth: comptime_int,
-    screenHeight: comptime_int,
-    groundY: f32,
-    tutorialStep: *u4,
-    newName: *[10:0]u8,
-    allocator: *const std.mem.Allocator,
-) !void {
-    if (state.phase == .START) {
-        const messageRect: rl.Rectangle = .{
-            .height = 200,
-            .width = 500,
-            .x = (screenWidth - 500) / 2,
-            .y = (screenHeight - groundY) / 2,
-        };
+// pub fn tutorial(
+//     state: *s.State,
+//     screenWidth: comptime_int,
+//     screenHeight: comptime_int,
+//     groundY: f32,
+//     tutorialStep: *u4,
+//     newName: *[10:0]u8,
+//     allocator: *const std.mem.Allocator,
+// ) !void {
+//     if (state.phase == .START) {
+//         const messageRect: rl.Rectangle = .{
+//             .height = 200,
+//             .width = 500,
+//             .x = (screenWidth - 500) / 2,
+//             .y = (screenHeight - groundY) / 2,
+//         };
 
-        if (tutorialStep.* == 0) {
-            if (ui.guiMessageBox(
-                messageRect,
-                "YOU",
-                "Greetings Adventurer!",
-                "next",
-            ) > 0) {
-                tutorialStep.* = 1;
-                return;
-            }
-            state.player.drawPortrait(
-                state,
-                .{
-                    .height = 60,
-                    .width = 60,
-                    .x = messageRect.x + 10,
-                    .y = messageRect.y + 30,
-                },
-            );
-        }
+//         if (tutorialStep.* == 0) {
+//             if (ui.guiMessageBox(
+//                 messageRect,
+//                 "YOU",
+//                 "Greetings Adventurer!",
+//                 "next",
+//             ) > 0) {
+//                 tutorialStep.* = 1;
+//                 return;
+//             }
+//             state.player.drawPortrait(
+//                 state,
+//                 .{
+//                     .height = 60,
+//                     .width = 60,
+//                     .x = messageRect.x + 10,
+//                     .y = messageRect.y + 30,
+//                 },
+//             );
+//         }
 
-        if (tutorialStep.* == 1) {
-            const messageRect2: rl.Rectangle = .{
-                .height = 200,
-                .width = 500,
-                .x = (screenWidth - 500) / 2,
-                .y = (screenHeight - groundY) / 2,
-            };
-            if (ui.guiTextInputBox(
-                messageRect2,
-                "ADVENTURER",
-                "Woah, a talking sword! What do they call you?",
-                "next",
-                newName,
-                10,
-                null,
-            ) > 0) {
-                state.player.name = newName;
-                tutorialStep.* = 2;
-                return;
-            }
+//         if (tutorialStep.* == 1) {
+//             const messageRect2: rl.Rectangle = .{
+//                 .height = 200,
+//                 .width = 500,
+//                 .x = (screenWidth - 500) / 2,
+//                 .y = (screenHeight - groundY) / 2,
+//             };
+//             if (ui.guiTextInputBox(
+//                 messageRect2,
+//                 "ADVENTURER",
+//                 "Woah, a talking sword! What do they call you?",
+//                 "next",
+//                 newName,
+//                 10,
+//                 null,
+//             ) > 0) {
+//                 state.player.name = newName;
+//                 tutorialStep.* = 2;
+//                 return;
+//             }
 
-            state.adventurer.drawPortrait(
-                state,
-                .{
-                    .height = 60,
-                    .width = 60,
-                    .x = messageRect.x + 10,
-                    .y = messageRect.y + 30,
-                },
-            );
-        }
+//             state.adventurer.drawPortrait(
+//                 state,
+//                 .{
+//                     .height = 60,
+//                     .width = 60,
+//                     .x = messageRect.x + 10,
+//                     .y = messageRect.y + 30,
+//                 },
+//             );
+//         }
 
-        if (tutorialStep.* == 2) {
-            var buffer: [13 + 10:0]u8 = std.mem.zeroes([13 + 10:0]u8);
-            _ = std.fmt.bufPrint(
-                &buffer,
-                "They call me {s}.",
-                .{state.player.name},
-            ) catch "";
+//         if (tutorialStep.* == 2) {
+//             var buffer: [13 + 10:0]u8 = std.mem.zeroes([13 + 10:0]u8);
+//             _ = std.fmt.bufPrint(
+//                 &buffer,
+//                 "They call me {s}.",
+//                 .{state.player.name},
+//             ) catch "";
 
-            if (ui.guiMessageBox(
-                messageRect,
-                state.player.name,
-                &buffer,
-                "next",
-            ) > 0) {
-                tutorialStep.* = 3;
-                return;
-            }
-            state.player.drawPortrait(
-                state,
-                .{
-                    .height = 60,
-                    .width = 60,
-                    .x = messageRect.x + 10,
-                    .y = messageRect.y + 30,
-                },
-            );
-        }
+//             if (ui.guiMessageBox(
+//                 messageRect,
+//                 state.player.name,
+//                 &buffer,
+//                 "next",
+//             ) > 0) {
+//                 tutorialStep.* = 3;
+//                 return;
+//             }
+//             state.player.drawPortrait(
+//                 state,
+//                 .{
+//                     .height = 60,
+//                     .width = 60,
+//                     .x = messageRect.x + 10,
+//                     .y = messageRect.y + 30,
+//                 },
+//             );
+//         }
 
-        if (tutorialStep.* == 3) {
-            const sx = try concatStrings(
-                allocator.*,
-                state.player.name,
-                "? stange name for a sword. Let's go!",
-            );
-            defer allocator.free(sx);
-            if (ui.guiMessageBox(
-                messageRect,
-                "ADVENTURER",
-                sx,
-                "next",
-            ) > 0) {
-                tutorialStep.* = 4;
-                return;
-            }
-            state.adventurer.drawPortrait(
-                state,
-                .{
-                    .height = 60,
-                    .width = 60,
-                    .x = messageRect.x + 10,
-                    .y = messageRect.y + 30,
-                },
-            );
-        }
-    }
-}
+//         if (tutorialStep.* == 3) {
+//             const sx = try concatStrings(
+//                 allocator.*,
+//                 state.player.name,
+//                 "? stange name for a sword. Let's go!",
+//             );
+//             defer allocator.free(sx);
+//             if (ui.guiMessageBox(
+//                 messageRect,
+//                 "ADVENTURER",
+//                 sx,
+//                 "next",
+//             ) > 0) {
+//                 tutorialStep.* = 4;
+//                 return;
+//             }
+//             state.adventurer.drawPortrait(
+//                 state,
+//                 .{
+//                     .height = 60,
+//                     .width = 60,
+//                     .x = messageRect.x + 10,
+//                     .y = messageRect.y + 30,
+//                 },
+//             );
+//         }
+//     }
+// }
 
 pub fn battle(state: *s.State, waitStart: *f64, turnWaitStart: *f64, turnWaitSeconds: f64) !void {
     // combat

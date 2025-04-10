@@ -19,9 +19,9 @@ pub const Adventurer = struct {
         return true;
     }
 
-    pub fn exit(self: *@This(), state: *s.State, dt: f32) bool {
+    pub fn exit(self: *@This(), state: *s.State) bool {
         if (self.pos.x < state.grid.getWidth()) {
-            state.adventurer.pos.x += rl.math.lerp(0, state.grid.getWidth(), self.speed * dt);
+            state.adventurer.pos.x += rl.math.lerp(0, state.grid.getWidth(), self.speed * rl.getFrameTime());
             return false;
         }
         return true;
