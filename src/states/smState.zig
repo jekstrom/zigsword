@@ -79,7 +79,6 @@ pub const SMState = struct {
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
 
-                std.debug.print("gen getIsComplete {*}\n", .{self});
                 return @call(.always_inline, ptr_info.pointer.child.getIsComplete, .{self});
                 // return ptr_info.pointer.child.getIsComplete(self);
             }

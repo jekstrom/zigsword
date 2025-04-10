@@ -11,6 +11,10 @@ pub const Adventurer = struct {
     health: u8,
     texture: rl.Texture,
 
+    pub fn entered(self: @This(), state: *s.State) bool {
+        return self.pos.x >= state.grid.getGroundCenterPos().x;
+    }
+
     pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
         if (self.pos.x < state.grid.getGroundCenterPos().x) {
             state.adventurer.pos.x += rl.math.lerp(0, state.grid.getGroundCenterPos().x, self.speed * dt);

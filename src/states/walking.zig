@@ -8,17 +8,22 @@ pub const WalkingState = struct {
     nextState: ?*sm.SMState,
     startTime: f64,
     isComplete: bool = false,
+    doExit: bool = false,
 
     pub fn getIsComplete(ptr: *anyopaque) anyerror!bool {
         const self: *WalkingState = @ptrCast(@alignCast(ptr));
-        std.debug.print("WALKING {*} getIsComplete: {}\n", .{ self, self.isComplete });
         return self.isComplete;
     }
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *WalkingState = @ptrCast(@alignCast(ptr));
         self.startTime = rl.getTime();
-        _ = state.adventurer.enter(state, rl.getFrameTime());
+
+        // Set starting position for the adventurer
+        state.adventurer.pos = .{
+            .x = -100,
+            .y = state.grid.getGroundY() - 110,
+        };
     }
 
     pub fn exit(ptr: *anyopaque, state: *s.State) anyerror!void {
@@ -31,27 +36,27 @@ pub const WalkingState = struct {
         const currentMapNode = try state.getCurrentMapNode();
         const waitSeconds: f64 = 2.0;
         const curTime = rl.getTime();
-        var doExit = false;
-        std.debug.print("WALKING {*} update: {}\n", .{ self, self.isComplete });
+        const entered = state.adventurer.enter(state, rl.getFrameTime());
 
-        if (curTime - self.startTime > waitSeconds) {
+        if (self.doExit and curTime - self.startTime > waitSeconds and state.adventurer.exit(state)) {
+            self.isComplete = true;
+        }
+        if (!self.doExit and entered and curTime - self.startTime > waitSeconds) {
             if (currentMapNode) |cn| {
-                if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-                    // battle
-                    // TODO: transition here?
-                } else if (cn.altarEvent != null) {
+                if (cn.altarEvent != null) {
                     try cn.altarEvent.?.handle(state);
                     if (cn.altarEvent.?.baseEvent.handled and (curTime - self.startTime) > waitSeconds) {
-                        doExit = true;
+                        // Reset the clock to give time to finish the altar event
+                        self.startTime = rl.getTime();
+                        self.doExit = true;
                     }
                 } else if ((curTime - self.startTime) > waitSeconds) {
-                    doExit = true;
+                    self.doExit = true;
                 }
                 // handle other events during walking
-            }
-            if (doExit and state.adventurer.exit(state)) {
-                std.debug.print("WALKING STATE IS COMPLETE\n", .{});
-                self.isComplete = true;
+            } else {
+                std.debug.print("No map node in walking event\n", .{});
+                std.debug.assert(false);
             }
         }
     }

@@ -16,46 +16,55 @@ pub const BattleState = struct {
     }
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
-        _ = state;
         const self: *BattleState = @ptrCast(@alignCast(ptr));
         self.startTime = rl.getTime();
+
+        state.turn = .MONSTER;
+
+        // Set starting position for the adventurer
+        state.adventurer.pos = .{
+            .x = -100,
+            .y = state.grid.getGroundY() - 110,
+        };
     }
 
     pub fn exit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        _ = state;
         _ = ptr;
-        _ = state.adventurer.exit(state);
     }
 
     pub fn update(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *BattleState = @ptrCast(@alignCast(ptr));
         const currentMapNode = try state.getCurrentMapNode();
         const waitSeconds: f64 = 2.0;
+        const entered = state.adventurer.enter(state, rl.getFrameTime());
 
-        if (currentMapNode) |cn| {
-            if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-                const monster = try state.getMonster();
-                if (monster != null and !monster.?.dying) {
-                    if (state.turn == .MONSTER) {
-                        std.debug.print("Monster turn {s}\n", .{monster.?.name});
-                        try monster.?.attack(state);
-                        // TODO: handle turns better
-                        state.NextTurn();
-                    } else if (state.turn == .PLAYER) {
-                        if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
-                            try state.player.attack(state, monster.?);
+        if (entered and rl.getTime() - self.startTime > waitSeconds) {
+            if (currentMapNode) |cn| {
+                if (cn.monsters != null and cn.monsters.?.items.len > 0) {
+                    const monster = try state.getMonster();
+                    if (monster != null and !monster.?.dying) {
+                        if (state.turn == .MONSTER) {
+                            std.debug.print("Monster turn {s}\n", .{monster.?.name});
+                            try monster.?.attack(state);
+                            // TODO: handle turns better
+                            self.startTime = rl.getTime();
+                            state.NextTurn();
+                        } else if (state.turn == .PLAYER) {
+                            if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
+                                try state.player.attack(state, monster.?);
+                                self.startTime = rl.getTime();
+                                state.NextTurn();
+                            }
+                        } else {
+                            self.startTime = rl.getTime();
                             state.NextTurn();
                         }
-                    } else if (@intFromEnum(state.turn) >= 4) {
-                        // TODO Wait for a second before continuing
-                        // if (rl.getTime() - turnWaitStart.* > turnWaitSeconds) {
-                        //     state.NextTurn();
-                        // }
-                    } else {
-                        state.NextTurn();
+                    } else if (state.adventurer.exit(state)) {
+                        // No more monsters, we're done here.
+                        self.isComplete = true;
                     }
                 }
-            } else if (rl.getTime() - self.startTime > waitSeconds) {
-                self.isComplete = true;
             }
         }
     }

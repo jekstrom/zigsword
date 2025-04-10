@@ -10,6 +10,7 @@ const m = @import("monster.zig");
 
 pub const Player = struct {
     pos: rl.Vector2,
+    rotation: f32,
     equiped: bool,
     name: [:0]u8,
     alignment: enums.Alignment,
@@ -119,6 +120,21 @@ pub const Player = struct {
         //     try self.stateMachine.?.state.update(state);
         // }
 
+        if (state.adventurer.health <= 0) {
+            // Reset -- wait for next adventurer
+            self.equiped = false;
+            state.adventurer.pos.x = -200;
+            state.mode = .ADVENTURERDEATH;
+        } else if (state.adventurer.entered(state)) {
+            // This is a toggle, not a continuous check
+            self.equiped = true;
+        }
+
+        if (self.equiped) {
+            self.rotation = 0.0;
+            self.pos.y = state.adventurer.pos.y;
+        }
+
         if (self.dice == null and (self.altarHistory == null or self.altarHistory.?.items.len == 0)) {
             return;
         }
@@ -181,7 +197,7 @@ pub const Player = struct {
         return false;
     }
 
-    pub fn draw(self: *@This(), state: *s.State, rotation: f32) void {
+    pub fn draw(self: *@This(), state: *s.State) void {
         if (self.equiped) {
             self.pos.x = state.adventurer.pos.x - 128 + 15;
             self.pos.y = state.adventurer.pos.y - 40;
@@ -204,7 +220,7 @@ pub const Player = struct {
                     .height = 100,
                 },
                 .{ .x = 0, .y = 0 },
-                rotation,
+                self.rotation,
                 .white,
             );
         }

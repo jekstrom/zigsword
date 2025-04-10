@@ -14,14 +14,18 @@ pub const TutorialState = struct {
 
     pub fn getIsComplete(ptr: *anyopaque) anyerror!bool {
         const self: *TutorialState = @ptrCast(@alignCast(ptr));
-        std.debug.print("TUTORIAL {*} update: {}\n", .{ self, self.isComplete });
         return self.isComplete;
     }
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
-        _ = state;
         const self: *TutorialState = @ptrCast(@alignCast(ptr));
         self.startTime = rl.getTime();
+
+        // Set starting position for the adventurer
+        state.adventurer.pos = .{
+            .x = -100,
+            .y = state.grid.getGroundY() - 110,
+        };
     }
 
     pub fn exit(ptr: *anyopaque, state: *s.State) anyerror!void {
@@ -32,13 +36,15 @@ pub const TutorialState = struct {
     pub fn update(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *TutorialState = @ptrCast(@alignCast(ptr));
         const waitSeconds: f64 = 2.0;
-        std.debug.print("tutorial step: {d}, isComplete: {}\n", .{ self.tutorialStep.*, self.isComplete });
 
-        if (self.tutorialStep.* >= 4 and rl.getTime() - self.startTime > waitSeconds) {
+        if (self.tutorialStep.* >= 4 and rl.getTime() - self.startTime > waitSeconds and state.adventurer.exit(state)) {
             self.isComplete = true;
         }
 
-        if (state.phase == .START) {
+        const entered = state.adventurer.enter(state, rl.getFrameTime());
+
+        // TODO: Redo phases..
+        if (entered and state.phase == .START) {
             const messageRect: rl.Rectangle = .{
                 .height = 200,
                 .width = 500,

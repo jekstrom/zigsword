@@ -386,6 +386,7 @@ pub fn main() anyerror!void {
         .stateMachine = null,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
+            .rotation = 180.0,
             .equiped = false,
             .name = undefined,
             .alignment = .GOOD,
@@ -402,7 +403,7 @@ pub fn main() anyerror!void {
             .name = "Zig",
             .pos = .{ .x = 0, .y = 0 },
             .nameKnown = false,
-            .speed = 0.95,
+            .speed = 0.35,
             .health = 100,
             .texture = map.get(.Adventurer).?,
         },
@@ -514,10 +515,10 @@ pub fn main() anyerror!void {
     var decay: u8 = 255;
     // var monsterMsgDecay: u8 = 255;
     var playerMsgDecay: u8 = 255;
-    var waitStart: f64 = 0.0;
-    // const waitSeconds: f64 = 2.0;
-    var turnWaitStart: f64 = 0.0;
-    const turnWaitSeconds: f64 = 1.5;
+    // var waitStart: f64 = 0.0;
+    // // const waitSeconds: f64 = 2.0;
+    // var turnWaitStart: f64 = 0.0;
+    // const turnWaitSeconds: f64 = 1.5;
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -540,8 +541,8 @@ pub fn main() anyerror!void {
         const uiRect: rl.Rectangle = .{ .height = uiHeight, .width = screenWidth, .x = 0, .y = topUI };
 
         // Keep track of if the adventurer has entered the map
-        var entered = false;
-        var playerRotation: f32 = 180.0;
+        // var entered = false;
+        // var playerRotation: f32 = 180.0;
 
         if (state.mode != .SHOP) {
             state.player.pos.x = screenWidth / 2;
@@ -550,24 +551,24 @@ pub fn main() anyerror!void {
             }
             state.mousePos = mousePos;
 
-            entered = state.adventurer.enter(&state, dt);
+            // entered = state.adventurer.enter(&state, dt);
 
-            if (entered and state.phase == .START) {
-                state.player.equiped = true;
-            }
+            // if (entered and state.phase == .START) {
+            //     state.player.equiped = true;
+            // }
 
-            if (state.player.equiped) {
-                playerRotation = 0.0;
-                state.player.pos.y = state.adventurer.pos.y;
-            }
+            // if (state.player.equiped) {
+            //     playerRotation = 0.0;
+            //     state.player.pos.y = state.adventurer.pos.y;
+            // }
         }
 
-        if (state.adventurer.health <= 0) {
-            // Reset -- wait for next adventurer
-            state.player.equiped = false;
-            state.adventurer.pos.x = -200;
-            state.mode = .ADVENTURERDEATH;
-        }
+        // if (state.adventurer.health <= 0) {
+        //     // Reset -- wait for next adventurer
+        //     state.player.equiped = false;
+        //     state.adventurer.pos.x = -200;
+        //     state.mode = .ADVENTURERDEATH;
+        // }
 
         if (state.player.durability <= 0) {
             // Game over
@@ -618,7 +619,7 @@ pub fn main() anyerror!void {
         //     }
         // }
 
-        if (!entered and state.phase == .START) {
+        if (!state.player.equiped and state.phase == .START) {
             rl.drawText(
                 "   YOU",
                 @as(i32, @intFromFloat(state.player.pos.x + 20)),
@@ -741,7 +742,7 @@ pub fn main() anyerror!void {
         // }
 
         state.grid.draw(&state);
-        state.player.draw(&state, playerRotation);
+        state.player.draw(&state);
         if (state.adventurer.health > 0) {
             state.adventurer.draw(&state);
         }
@@ -750,14 +751,14 @@ pub fn main() anyerror!void {
         // }
         try state.player.update(&state);
 
-        if (state.phase == .PLAY and state.mode == .BATTLE) {
-            try battle(
-                &state,
-                &waitStart,
-                &turnWaitStart,
-                turnWaitSeconds,
-            );
-        }
+        // if (state.phase == .PLAY and state.mode == .BATTLE) {
+        //     try battle(
+        //         &state,
+        //         &waitStart,
+        //         &turnWaitStart,
+        //         turnWaitSeconds,
+        //     );
+        // }
 
         try currentMapNode.?.update(&state);
         try state.update();
@@ -981,33 +982,33 @@ pub fn main() anyerror!void {
 //     }
 // }
 
-pub fn battle(state: *s.State, waitStart: *f64, turnWaitStart: *f64, turnWaitSeconds: f64) !void {
-    // combat
-    const monster = try state.getMonster();
-    if (monster != null) {
-        if (monster.?.dying) {
-            waitStart.* = rl.getTime();
-            state.mode = .WAIT;
-        } else {
-            if (state.turn == .MONSTER) {
-                std.debug.print("Monster turn {s}\n", .{monster.?.name});
-                try monster.?.attack(state);
-                turnWaitStart.* = rl.getTime();
-                state.NextTurn();
-            } else if (state.turn == .PLAYER) {
-                if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
-                    try state.player.attack(state, monster.?);
-                    turnWaitStart.* = rl.getTime();
-                    state.NextTurn();
-                }
-            } else if (@intFromEnum(state.turn) >= 4) {
-                // Wait for a second before continuing
-                if (rl.getTime() - turnWaitStart.* > turnWaitSeconds) {
-                    state.NextTurn();
-                }
-            } else {
-                state.NextTurn();
-            }
-        }
-    }
-}
+// pub fn battle(state: *s.State, waitStart: *f64, turnWaitStart: *f64, turnWaitSeconds: f64) !void {
+//     // combat
+//     const monster = try state.getMonster();
+//     if (monster != null) {
+//         if (monster.?.dying) {
+//             waitStart.* = rl.getTime();
+//             state.mode = .WAIT;
+//         } else {
+//             if (state.turn == .MONSTER) {
+//                 std.debug.print("Monster turn {s}\n", .{monster.?.name});
+//                 try monster.?.attack(state);
+//                 turnWaitStart.* = rl.getTime();
+//                 state.NextTurn();
+//             } else if (state.turn == .PLAYER) {
+//                 if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
+//                     try state.player.attack(state, monster.?);
+//                     turnWaitStart.* = rl.getTime();
+//                     state.NextTurn();
+//                 }
+//             } else if (@intFromEnum(state.turn) >= 4) {
+//                 // Wait for a second before continuing
+//                 if (rl.getTime() - turnWaitStart.* > turnWaitSeconds) {
+//                     state.NextTurn();
+//                 }
+//             } else {
+//                 state.NextTurn();
+//             }
+//         }
+//     }
+// }

@@ -97,20 +97,12 @@ pub const State = struct {
     pub fn NextTurn(self: *@This()) void {
         // TODO: Better way to handle waiting in between turns?
         if (self.turn == .ENVIRONMENT) {
-            self.turn = .ENVIRONMENTWAIT;
-        } else if (self.turn == .MONSTER) {
-            self.turn = .MONSTERWAIT;
-        } else if (self.turn == .PLAYER) {
-            self.turn = .PLAYERWAIT;
-        } else if (self.turn == .ADVENTURER) {
-            self.turn = .ADVENTURERWAIT;
-        } else if (self.turn == .ENVIRONMENTWAIT) {
             self.turn = .MONSTER;
-        } else if (self.turn == .MONSTERWAIT) {
+        } else if (self.turn == .MONSTER) {
             self.turn = .PLAYER;
-        } else if (self.turn == .PLAYERWAIT) {
+        } else if (self.turn == .PLAYER) {
             self.turn = .ADVENTURER;
-        } else if (self.turn == .ADVENTURERWAIT) {
+        } else if (self.turn == .ADVENTURER) {
             self.turn = .ENVIRONMENT;
         }
     }
@@ -166,7 +158,7 @@ pub const State = struct {
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
             if (nextState != null) {
                 try self.stateMachine.?.setState(nextState.?, self);
-            } else if (curState.smType == .WALKING) {
+            } else if (curState.smType != .TUTORIAL) {
                 try self.stateMachine.?.clearState();
                 std.debug.print("TRANSINTION FROM WALKING\n\n", .{});
                 // Next state is null and current state is WALKING, go to next map node.
@@ -174,19 +166,19 @@ pub const State = struct {
                 const monster = try self.getMonster();
                 var nextSmState: ?*sm.SMState = null;
                 if (monster != null) {
-                    var battleState: @import("../states/battle.zig").BattleState = .{
-                        .nextState = null,
-                        .isComplete = false,
-                        .startTime = rl.getTime(),
-                    };
+                    var battleState = try self.allocator.create(BattleState);
+                    battleState.nextState = null;
+                    battleState.isComplete = false;
+                    battleState.startTime = rl.getTime();
+
                     const battleSmState = try battleState.smState(&self.allocator);
                     nextSmState = battleSmState;
                 } else if (try self.isShop()) {
-                    var shopState: @import("../states/shop.zig").ShopState = .{
-                        .nextState = null,
-                        .isComplete = false,
-                        .startTime = rl.getTime(),
-                    };
+                    var shopState = try self.allocator.create(ShopState);
+                    shopState.nextState = null;
+                    shopState.isComplete = false;
+                    shopState.startTime = rl.getTime();
+
                     const shopSmState = try shopState.smState(&self.allocator);
                     nextSmState = shopSmState;
                 } else {
