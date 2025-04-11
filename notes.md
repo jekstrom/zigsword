@@ -24,6 +24,7 @@
 * boss fights should be like 70's sword and sorcery movie posters
 * good ending - ascend into heaven, mountain tileset, conquer your demons (selfishness, lust, greed, etc)
 * evil ending - descend into hell, volcanic tileset, slay your conscience (compassion, morality, 'humanity', duty, virtue) 
+* base dice + mult dice, like balatro
 
 # what is in a random event?
 * treasure    (consumables or gold)

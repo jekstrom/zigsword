@@ -7,6 +7,7 @@ const ah = @import("../altarHistory.zig");
 const d = @import("../die.zig");
 const shop = @import("shopitem.zig");
 const m = @import("monster.zig");
+const RollResult = @import("../dice/rollresult.zig").RollResult;
 
 pub const Player = struct {
     pos: rl.Vector2,
@@ -33,15 +34,20 @@ pub const Player = struct {
         }
 
         // roll selected dice
-        var result: i32 = 0;
+        const rollResultsList = std.ArrayList(RollResult);
+        var rollResults: rollResultsList = rollResultsList.init(state.allocator);
+        defer rollResults.deinit();
+
         for (0..dice.?.items.len) |i| {
             const die = dice.?.items[i];
             if (try die.getSelected()) {
-                const dieResult = try die.roll(state);
-                result += dieResult;
-                std.debug.print("Roll result: {d}/{d}\n", .{ dieResult, try die.getSides() });
+                const rollResult = try die.roll(state, &rollResults);
+                std.debug.print("Roll result {d}/{d}\n", .{ rollResult.num, try die.getSides() });
+                try rollResults.append(rollResult);
             }
         }
+        const result = rollResults.items[rollResults.items.len - 1].num;
+        std.debug.print("Final Roll result: {d} from {d} dice\n", .{ result, rollResults.items.len });
 
         // remove selected dice
         var i = dice.?.items.len;
@@ -174,7 +180,7 @@ pub const Player = struct {
             }
         }
 
-        if (successes >= 1) {
+        if (successes >= 3) {
             if (!self.blessed) {
                 self.blessed = true;
                 try self.messages.?.append("Blessed");

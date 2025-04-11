@@ -13,6 +13,7 @@ const mob = @import("objects/monster.zig");
 const enums = @import("enums.zig");
 const d = @import("die.zig");
 const BasicDie = @import("dice/basic.zig").BasicDie;
+const MultDie = @import("dice/mult.zig").MultDie;
 const shop = @import("objects/shopitem.zig");
 const textures = @import("textures.zig");
 const sm = @import("states/smState.zig");
@@ -262,7 +263,7 @@ pub fn main() anyerror!void {
             .name = "Zig",
             .pos = .{ .x = 0, .y = 0 },
             .nameKnown = false,
-            .speed = 0.35,
+            .speed = 0.95,
             .health = 100,
             .texture = map.get(.Adventurer).?,
         },
@@ -358,8 +359,8 @@ pub fn main() anyerror!void {
     xoffset += 50;
     while (dcount < numd4) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
-        var d4 = try state.allocator.create(BasicDie);
-        d4.name = "Basic d4";
+        var d4 = try state.allocator.create(MultDie);
+        d4.name = "Mult d4";
         d4.sides = 4;
         d4.texture = state.textureMap.get(.D4);
         d4.hovered = false;

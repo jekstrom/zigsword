@@ -5,7 +5,7 @@ const s = @import("../objects/state.zig");
 const Die = @import("../die.zig").Die;
 const RollResult = @import("rollresult.zig").RollResult;
 
-pub const BasicDie = struct {
+pub const MultDie = struct {
     name: [:0]const u8,
     sides: u16,
     pos: rl.Vector2,
@@ -15,46 +15,48 @@ pub const BasicDie = struct {
     index: usize,
 
     pub fn getSides(ptr: *anyopaque) anyerror!u16 {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.sides;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.pos;
     }
 
     pub fn getHovered(ptr: *anyopaque) anyerror!bool {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.hovered;
     }
 
     pub fn getSelected(ptr: *anyopaque) anyerror!bool {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.selected;
     }
 
     pub fn getTexture(ptr: *anyopaque) anyerror!?rl.Texture {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.texture;
     }
 
     pub fn getIndex(ptr: *anyopaque) anyerror!usize {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.index;
     }
 
     pub fn setIndex(ptr: *anyopaque, newIndex: usize) anyerror!void {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         self.index = newIndex;
     }
 
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
-        _ = prevRollResult;
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
         const result = state.rand.intRangeAtMost(u16, 1, self.sides);
+        // Add result as multiplier to current dice totals
+        const curTotal: u16 = prevRollResult.items[prevRollResult.items.len - 1].num;
+        std.debug.print("MULT {d} * {d}\n", .{ result, curTotal });
         return .{
-            .num = result,
+            .num = result * curTotal,
             .sides = self.sides,
             .rarity = 0,
             .color = 0,
@@ -62,7 +64,7 @@ pub const BasicDie = struct {
     }
 
     pub fn update(ptr: *anyopaque, state: *s.State) void {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
 
         const mousepos = rl.getMousePosition();
         const dice = state.player.dice;
@@ -149,7 +151,7 @@ pub const BasicDie = struct {
     }
 
     pub fn draw(ptr: *anyopaque, state: *s.State) void {
-        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
 
         // TODO: Abstract this out of individual die
         var texture: ?rl.Texture = null;
@@ -184,7 +186,7 @@ pub const BasicDie = struct {
         }
     }
 
-    pub fn die(self: *BasicDie, allocator: *const std.mem.Allocator) !*Die {
+    pub fn die(self: *MultDie, allocator: *const std.mem.Allocator) !*Die {
         return try Die.init(
             self,
             self.name,

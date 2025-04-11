@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const std = @import("std");
 const enums = @import("../enums.zig");
 const s = @import("objects/state.zig");
+const RollResult = @import("dice/rollresult.zig").RollResult;
 
 // Interface for dice
 pub const Die = struct {
@@ -20,7 +21,7 @@ pub const Die = struct {
     getTextureFn: *const fn (ptr: *anyopaque) anyerror!?rl.Texture,
     getIndexFn: *const fn (ptr: *anyopaque) anyerror!usize,
     setIndexFn: *const fn (ptr: *anyopaque, newIndex: usize) anyerror!void,
-    rollFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!u16,
+    rollFn: *const fn (ptr: *anyopaque, state: *s.State, prevRollResults: *const std.ArrayList(RollResult)) anyerror!RollResult,
     updateFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
@@ -56,9 +57,8 @@ pub const Die = struct {
         return self.updateFn(self.ptr, state);
     }
 
-    pub fn roll(self: *@This(), state: *s.State) anyerror!u16 {
-        return self.rollFn(self.ptr, state);
-        // return state.rand.intRangeAtMost(u8, 1, self.sides);
+    pub fn roll(self: *@This(), state: *s.State, prevRollResults: *const std.ArrayList(RollResult)) anyerror!RollResult {
+        return self.rollFn(self.ptr, state, prevRollResults);
     }
 
     pub fn draw(self: *@This(), state: *s.State) anyerror!void {
@@ -94,11 +94,11 @@ pub const Die = struct {
                 return ptr_info.pointer.child.draw(self, state);
             }
 
-            pub fn roll(pointer: *anyopaque, state: *s.State) anyerror!u16 {
+            pub fn roll(pointer: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
-                return ptr_info.pointer.child.roll(self, state);
+                return ptr_info.pointer.child.roll(self, state, prevRollResult);
             }
 
             pub fn getSides(pointer: *anyopaque) anyerror!u16 {
