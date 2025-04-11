@@ -14,6 +14,7 @@ pub const Monster = struct {
     dying: bool,
     gold: u8,
     messages: ?std.ArrayList([:0]const u8),
+    monsterMsgDecay: u8 = 255,
 
     pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
         if (self.pos.x > state.grid.getGroundCenterPos().x + 200) {
@@ -59,6 +60,27 @@ pub const Monster = struct {
                     .{damage},
                 ) catch "";
                 try player.messages.?.append(buffer);
+            }
+        }
+    }
+
+    pub fn update(self: *@This(), state: *s.State) void {
+        _ = state;
+        const monsterMessageDisplayed = self.displayMessages(
+            self.monsterMsgDecay,
+            rl.getFrameTime() * @as(f32, @floatFromInt(self.monsterMsgDecay)),
+        );
+        if (self.monsterMsgDecay == 0) {
+            self.monsterMsgDecay = 255;
+        }
+
+        if (monsterMessageDisplayed) {
+            const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * rl.getFrameTime(), 0, 255)));
+            const rs = @subWithOverflow(self.monsterMsgDecay, ddiff);
+            if (rs[1] != 0) {
+                self.monsterMsgDecay = 0;
+            } else {
+                self.monsterMsgDecay -= ddiff;
             }
         }
     }

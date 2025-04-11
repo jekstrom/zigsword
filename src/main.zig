@@ -305,32 +305,6 @@ pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeT
     }
 }
 
-// pub fn goToNextMap(state: *s.State) void {
-//     if (state.map.?.nextMap) |nm| {
-//         state.map = nm.*;
-//         state.currentMap = state.map.?.currentMapCount;
-//         state.currentNode = 0;
-//         state.grid.clearTextures();
-//     }
-// }
-
-// pub fn goToNextMapNode(state: *s.State) void {
-//     if (state.map) |map| {
-//         const numnodes = map.nodes.items.len;
-//         if ((state.currentNode + 1) >= numnodes) {
-//             state.currentNode = 0;
-//             std.debug.print("Resetting map node {d}\n", .{state.currentNode});
-//             goToNextMap(state);
-//         } else {
-//             state.currentNode += 1;
-//             std.debug.print("Going to map node {d}\n", .{state.currentNode});
-//         }
-//     } else {
-//         std.debug.print("no map found\n", .{});
-//         std.debug.assert(false);
-//     }
-// }
-
 pub fn main() anyerror!void {
     // Initialization
     //--------------------------------------------------------------------------------------
@@ -514,11 +488,6 @@ pub fn main() anyerror!void {
     // Keep track of message decay
     var decay: u8 = 255;
     // var monsterMsgDecay: u8 = 255;
-    var playerMsgDecay: u8 = 255;
-    // var waitStart: f64 = 0.0;
-    // // const waitSeconds: f64 = 2.0;
-    // var turnWaitStart: f64 = 0.0;
-    // const turnWaitSeconds: f64 = 1.5;
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -550,25 +519,7 @@ pub fn main() anyerror!void {
                 state.player.pos.y += 250 * dt;
             }
             state.mousePos = mousePos;
-
-            // entered = state.adventurer.enter(&state, dt);
-
-            // if (entered and state.phase == .START) {
-            //     state.player.equiped = true;
-            // }
-
-            // if (state.player.equiped) {
-            //     playerRotation = 0.0;
-            //     state.player.pos.y = state.adventurer.pos.y;
-            // }
         }
-
-        // if (state.adventurer.health <= 0) {
-        //     // Reset -- wait for next adventurer
-        //     state.player.equiped = false;
-        //     state.adventurer.pos.x = -200;
-        //     state.mode = .ADVENTURERDEATH;
-        // }
 
         if (state.player.durability <= 0) {
             // Game over
@@ -612,13 +563,6 @@ pub fn main() anyerror!void {
             tutorialStep = 0;
         }
 
-        // if (state.mode == .SHOP) {
-        //     if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
-        //         goToNextMap(&state);
-        //         state.mode = .WALKING;
-        //     }
-        // }
-
         if (!state.player.equiped and state.phase == .START) {
             rl.drawText(
                 "   YOU",
@@ -629,136 +573,23 @@ pub fn main() anyerror!void {
             );
         }
 
-        // if (entered and state.mode == .TUTORIAL and tutorialStep < 4) {
-        //     // try tutorial(
-        //     //     &state,
-        //     //     screenWidth,
-        //     //     screenHeight,
-        //     //     groundY,
-        //     //     &tutorialStep,
-        //     //     &newName,
-        //     //     &allocator,
-        //     // );
-        // }
-        // if (state.mode == .TUTORIAL and tutorialStep >= 4) {
-        //     state.mode = .WALKING;
-        // }
-
         const currentMapNode = try state.getCurrentMapNode();
-        // if (currentMapNode) |cn| {
-        //     if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-        //         // go to battle state if monsters exists
-        //         var battleState: @import("states/battle.zig").BattleState = .{
-        //             .nextState = null,
-        //             .isComplete = false,
-        //             .startTime = rl.getTime(),
-        //         };
-        //         var battleSmState = battleState.smState();
-        //         try state.player.stateMachine.?.setState(&battleSmState, &state);
-        //     }
-        // }
-
-        // if (currentMapNode) |cn| {
-        //     if (cn.type == .SHOP) {
-        //         state.adventurer.pos.x = -200;
-        //         state.mode = .SHOP;
-        //     }
-        // }
-
-        // if (entered and state.phase == .PLAY and state.mode != .PAUSE and state.mode != .DONE and (state.mode == .WALKING or state.mode == .BATTLE)) {
-        //     if (currentMapNode) |cn| {
-        //         if (cn.monsters != null and cn.monsters.?.items.len > 0) {
-        //             // battle
-        //         } else if (cn.altarEvent != null) {
-        //             try cn.altarEvent.?.handle(&state);
-        //             if (cn.altarEvent.?.baseEvent.handled) {
-        //                 waitStart = rl.getTime();
-        //                 state.mode = .WAIT;
-        //             }
-        //         } else {
-        //             const exited = state.adventurer.exit(&state, dt);
-        //             if (exited) {
-        //                 state.mode = .DONE;
-        //             }
-        //         }
-        //     }
-        // }
-
-        // if (currentMapNode) |cn| {
-        //     if (cn.monsters) |mobs| {
-        //         for (0..mobs.items.len) |i| {
-        //             const monsterMessageDisplayed = mobs.items[i].displayMessages(
-        //                 monsterMsgDecay,
-        //                 dt * @as(f32, @floatFromInt(monsterMsgDecay)),
-        //             );
-        //             if (monsterMsgDecay == 0) {
-        //                 monsterMsgDecay = 255;
-        //             }
-
-        //             if (monsterMessageDisplayed) {
-        //                 const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
-        //                 const rs = @subWithOverflow(monsterMsgDecay, ddiff);
-        //                 if (rs[1] != 0) {
-        //                     monsterMsgDecay = 0;
-        //                 } else {
-        //                     monsterMsgDecay -= ddiff;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-        // if (state.mode == .WAIT and rl.getTime() - waitStart >= waitSeconds) {
-        //     const exited = state.adventurer.exit(&state, dt);
-        //     if (exited) {
-        //         currentMapNode.?.removeDeadMonsters();
-        //         state.mode = .DONE;
-        //     }
-        // }
-
-        // if (state.mode != .WAIT and currentMapNode.?.monstersEntered) {
-        //     state.mode = .BATTLE;
-        // }
-
-        // // Handle exiting first map
-        // if (state.phase == .START and entered and tutorialStep >= 4) {
-        //     const exited = state.adventurer.exit(&state, dt);
-        //     if (exited) {
-        //         state.mode = .DONE;
-        //         state.phase = state.NextPhase();
-        //     }
-        // }
-
-        // if (state.mode == .DONE) {
-        //     if (currentMapNode) |cn| {
-        //         if (cn.altarEvent != null) {
-        //             cn.altarEvent.?.baseEvent.handled = false;
-        //         }
-        //         cn.print();
-        //     }
-        //     goToNextMapNode(&state);
-        //     state.mode = .WALKING;
-        //     state.adventurer.pos = .{ .x = 0, .y = groundY - 110 };
-        // }
 
         state.grid.draw(&state);
         state.player.draw(&state);
         if (state.adventurer.health > 0) {
             state.adventurer.draw(&state);
         }
-        // if (state.phase == .PLAY) {
-        //     try state.player.update(&state);
-        // }
+
         try state.player.update(&state);
 
-        // if (state.phase == .PLAY and state.mode == .BATTLE) {
-        //     try battle(
-        //         &state,
-        //         &waitStart,
-        //         &turnWaitStart,
-        //         turnWaitSeconds,
-        //     );
-        // }
+        if (currentMapNode) |cn| {
+            if (cn.monsters) |mobs| {
+                for (0..mobs.items.len) |i| {
+                    mobs.items[i].update(&state);
+                }
+            }
+        }
 
         try currentMapNode.?.update(&state);
         try state.update();
@@ -776,24 +607,6 @@ pub fn main() anyerror!void {
                 decay = 0;
             } else {
                 decay -= ddiff;
-            }
-        }
-
-        const playerMessageDisplayed = state.player.displayMessages(
-            playerMsgDecay,
-            dt * @as(f32, @floatFromInt(playerMsgDecay)),
-        );
-        if (playerMsgDecay == 0) {
-            playerMsgDecay = 255;
-        }
-
-        if (playerMessageDisplayed) {
-            const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * dt, 0, 255)));
-            const rs = @subWithOverflow(playerMsgDecay, ddiff);
-            if (rs[1] != 0) {
-                playerMsgDecay = 0;
-            } else {
-                playerMsgDecay -= ddiff;
             }
         }
 
@@ -854,161 +667,3 @@ pub fn main() anyerror!void {
         }
     }
 }
-
-// pub fn tutorial(
-//     state: *s.State,
-//     screenWidth: comptime_int,
-//     screenHeight: comptime_int,
-//     groundY: f32,
-//     tutorialStep: *u4,
-//     newName: *[10:0]u8,
-//     allocator: *const std.mem.Allocator,
-// ) !void {
-//     if (state.phase == .START) {
-//         const messageRect: rl.Rectangle = .{
-//             .height = 200,
-//             .width = 500,
-//             .x = (screenWidth - 500) / 2,
-//             .y = (screenHeight - groundY) / 2,
-//         };
-
-//         if (tutorialStep.* == 0) {
-//             if (ui.guiMessageBox(
-//                 messageRect,
-//                 "YOU",
-//                 "Greetings Adventurer!",
-//                 "next",
-//             ) > 0) {
-//                 tutorialStep.* = 1;
-//                 return;
-//             }
-//             state.player.drawPortrait(
-//                 state,
-//                 .{
-//                     .height = 60,
-//                     .width = 60,
-//                     .x = messageRect.x + 10,
-//                     .y = messageRect.y + 30,
-//                 },
-//             );
-//         }
-
-//         if (tutorialStep.* == 1) {
-//             const messageRect2: rl.Rectangle = .{
-//                 .height = 200,
-//                 .width = 500,
-//                 .x = (screenWidth - 500) / 2,
-//                 .y = (screenHeight - groundY) / 2,
-//             };
-//             if (ui.guiTextInputBox(
-//                 messageRect2,
-//                 "ADVENTURER",
-//                 "Woah, a talking sword! What do they call you?",
-//                 "next",
-//                 newName,
-//                 10,
-//                 null,
-//             ) > 0) {
-//                 state.player.name = newName;
-//                 tutorialStep.* = 2;
-//                 return;
-//             }
-
-//             state.adventurer.drawPortrait(
-//                 state,
-//                 .{
-//                     .height = 60,
-//                     .width = 60,
-//                     .x = messageRect.x + 10,
-//                     .y = messageRect.y + 30,
-//                 },
-//             );
-//         }
-
-//         if (tutorialStep.* == 2) {
-//             var buffer: [13 + 10:0]u8 = std.mem.zeroes([13 + 10:0]u8);
-//             _ = std.fmt.bufPrint(
-//                 &buffer,
-//                 "They call me {s}.",
-//                 .{state.player.name},
-//             ) catch "";
-
-//             if (ui.guiMessageBox(
-//                 messageRect,
-//                 state.player.name,
-//                 &buffer,
-//                 "next",
-//             ) > 0) {
-//                 tutorialStep.* = 3;
-//                 return;
-//             }
-//             state.player.drawPortrait(
-//                 state,
-//                 .{
-//                     .height = 60,
-//                     .width = 60,
-//                     .x = messageRect.x + 10,
-//                     .y = messageRect.y + 30,
-//                 },
-//             );
-//         }
-
-//         if (tutorialStep.* == 3) {
-//             const sx = try concatStrings(
-//                 allocator.*,
-//                 state.player.name,
-//                 "? stange name for a sword. Let's go!",
-//             );
-//             defer allocator.free(sx);
-//             if (ui.guiMessageBox(
-//                 messageRect,
-//                 "ADVENTURER",
-//                 sx,
-//                 "next",
-//             ) > 0) {
-//                 tutorialStep.* = 4;
-//                 return;
-//             }
-//             state.adventurer.drawPortrait(
-//                 state,
-//                 .{
-//                     .height = 60,
-//                     .width = 60,
-//                     .x = messageRect.x + 10,
-//                     .y = messageRect.y + 30,
-//                 },
-//             );
-//         }
-//     }
-// }
-
-// pub fn battle(state: *s.State, waitStart: *f64, turnWaitStart: *f64, turnWaitSeconds: f64) !void {
-//     // combat
-//     const monster = try state.getMonster();
-//     if (monster != null) {
-//         if (monster.?.dying) {
-//             waitStart.* = rl.getTime();
-//             state.mode = .WAIT;
-//         } else {
-//             if (state.turn == .MONSTER) {
-//                 std.debug.print("Monster turn {s}\n", .{monster.?.name});
-//                 try monster.?.attack(state);
-//                 turnWaitStart.* = rl.getTime();
-//                 state.NextTurn();
-//             } else if (state.turn == .PLAYER) {
-//                 if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
-//                     try state.player.attack(state, monster.?);
-//                     turnWaitStart.* = rl.getTime();
-//                     state.NextTurn();
-//                 }
-//             } else if (@intFromEnum(state.turn) >= 4) {
-//                 // Wait for a second before continuing
-//                 if (rl.getTime() - turnWaitStart.* > turnWaitSeconds) {
-//                     state.NextTurn();
-//                 }
-//             } else {
-//                 state.NextTurn();
-//             }
-//         }
-//     }
-// }

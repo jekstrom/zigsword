@@ -21,6 +21,7 @@ pub const Player = struct {
     gold: i32,
     maxSelectedDice: u8,
     messages: ?std.ArrayList([:0]const u8),
+    playerMsgDecay: u8 = 255,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) !void {
@@ -140,7 +141,26 @@ pub const Player = struct {
         }
 
         if (self.messages == null) {
+            std.debug.print("Player update. Messages == null\n", .{});
             std.debug.assert(false);
+        }
+
+        const playerMessageDisplayed = self.displayMessages(
+            self.playerMsgDecay,
+            rl.getFrameTime() * @as(f32, @floatFromInt(self.playerMsgDecay)),
+        );
+        if (self.playerMsgDecay == 0) {
+            self.playerMsgDecay = 255;
+        }
+
+        if (playerMessageDisplayed) {
+            const ddiff = @as(u8, @intFromFloat(rl.math.clamp(230 * rl.getFrameTime(), 0, 255)));
+            const rs = @subWithOverflow(self.playerMsgDecay, ddiff);
+            if (rs[1] != 0) {
+                self.playerMsgDecay = 0;
+            } else {
+                self.playerMsgDecay -= ddiff;
+            }
         }
 
         var successes: u8 = 0;
@@ -184,7 +204,7 @@ pub const Player = struct {
             rl.drawText(
                 msg,
                 @as(i32, @intFromFloat(self.pos.x + 115)),
-                @as(i32, @intFromFloat(self.pos.y - 55 + (10 * dt))),
+                @as(i32, @intFromFloat(self.pos.y - 105 + (10 * dt))),
                 20,
                 rl.Color.init(50, 50, 250, decay),
             );

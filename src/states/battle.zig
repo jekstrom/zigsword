@@ -57,7 +57,7 @@ pub const BattleState = struct {
                                 state.NextTurn();
                             }
                         } else {
-                            self.startTime = rl.getTime();
+                            // TODO: Handle other turns for Environment and Adventurer
                             state.NextTurn();
                         }
                     } else if (state.adventurer.exit(state)) {
