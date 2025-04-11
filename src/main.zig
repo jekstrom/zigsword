@@ -189,122 +189,6 @@ pub fn generateAdventurer(state: *s.State) void {
     state.adventurer = adventurer;
 }
 
-pub fn generateNextMap(state: *s.State, name: [:0]const u8, nodeType: m.MapNodeType) !void {
-    // Generate a new map using seed from State.
-    // Maps should all contain the same number of nodes but
-    // what each node consists of should be random.
-
-    const List = std.ArrayList(m.MapNode);
-    const MonsterList = std.ArrayList(mob.Monster);
-    const ShopItems = std.ArrayList(shop.ShopItem);
-
-    var numWalkingNodes = state.rand.intRangeAtMost(
-        u4,
-        2,
-        4,
-    );
-
-    if (nodeType == .SHOP) {
-        numWalkingNodes = 1;
-    }
-
-    var newMap = try state.allocator.create(m.Map);
-
-    newMap.currentMapCount = 1;
-    newMap.name = name;
-    newMap.nodes = List.init(state.allocator);
-    newMap.nextMap = null;
-
-    // TODO: Deallocate maps and nodes
-
-    for (0..numWalkingNodes) |i| {
-        // Create new nodes for the map, assigning a name.
-        const baseName = "Map Node ";
-        var floatLog: f16 = 1.0;
-        if (i > 0) {
-            floatLog = @floor(@log10(@as(f16, @floatFromInt(i))) + 1.0);
-        }
-        const digits: u64 = @as(u64, @intFromFloat(floatLog));
-        const buffer = try state.allocator.allocSentinel(
-            u8,
-            baseName.len + digits,
-            0,
-        );
-        _ = std.fmt.bufPrint(
-            buffer,
-            "{s}{d}",
-            .{ baseName, i },
-        ) catch "";
-
-        if (nodeType == .WALKING) {
-            var outsideNode: m.MapNode = .{
-                .name = buffer,
-                .type = nodeType,
-                .texture = state.textureMap.get(.OUTSIDEGROUND),
-                .background = state.textureMap.get(.OUTSIDEBACKGROUND),
-                .monstersEntered = false,
-                .monsters = null,
-                .altarEvent = null,
-                .shopItems = null,
-                .stateMachine = null,
-            };
-            try outsideNode.init(state);
-            try newMap.addMapNode(outsideNode);
-        } else if (nodeType == .DUNGEON) {
-            var dungeonNode: m.MapNode = .{
-                .name = buffer,
-                .type = nodeType,
-                .texture = state.textureMap.get(.DUNGEONGROUND),
-                .background = state.textureMap.get(.DUNGEONBACKGROUND),
-                .monsters = MonsterList.init(state.allocator),
-                .monstersEntered = false,
-                .altarEvent = null,
-                .shopItems = null,
-                .stateMachine = null,
-            };
-            try dungeonNode.init(state);
-            try newMap.addMapNode(dungeonNode);
-        } else if (nodeType == .SHOP) {
-            var shopNode: m.MapNode = .{
-                .name = buffer,
-                .type = nodeType,
-                .texture = state.textureMap.get(.DUNGEONGROUND),
-                .background = state.textureMap.get(.SHOPBACKGROUND),
-                .monstersEntered = false,
-                .monsters = null,
-                .altarEvent = null,
-                .shopItems = ShopItems.init(state.allocator),
-                .stateMachine = null,
-            };
-            try shopNode.init(state);
-            try newMap.addMapNode(shopNode);
-        }
-    }
-
-    if (state.map) |_| {
-        // try state.map.?.addMap(state, "", newMap.nodes);
-
-        var currentMap: ?*m.Map = &state.map.?;
-        while (currentMap != null) {
-            newMap.currentMapCount = currentMap.?.currentMapCount + 1;
-            std.debug.print("Current map: {s}\n", .{currentMap.?.name});
-            if (currentMap.?.nextMap == null) {
-                std.debug.print("next map null\n", .{});
-                break;
-            } else {
-                currentMap = currentMap.?.nextMap;
-                std.debug.print("next map: {s}\n", .{currentMap.?.name});
-            }
-        }
-        std.debug.print("Adding next map as child to {s}\n", .{currentMap.?.name});
-
-        currentMap.?.nextMap = newMap;
-    } else {
-        newMap.currentMapCount = 1;
-        state.map = newMap.*;
-    }
-}
-
 pub fn main() anyerror!void {
     // Initialization
     //--------------------------------------------------------------------------------------
@@ -411,9 +295,9 @@ pub fn main() anyerror!void {
     state.grid.draw(&state);
 
     // Generate first maps
-    try generateNextMap(&state, "Start", .WALKING);
-    try generateNextMap(&state, "Dungeon", .DUNGEON);
-    try generateNextMap(&state, "Shop", .SHOP);
+    try state.generateNextMap("Start", .WALKING);
+    try state.generateNextMap("Dungeon", .DUNGEON);
+    try state.generateNextMap("Shop", .SHOP);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
@@ -484,10 +368,6 @@ pub fn main() anyerror!void {
             },
         });
     }
-
-    // Keep track of message decay
-    var decay: u8 = 255;
-    // var monsterMsgDecay: u8 = 255;
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -595,20 +475,6 @@ pub fn main() anyerror!void {
         try state.update();
 
         drawUi(&state, topUI);
-
-        const messageDisplayed = state.displayMessages(decay);
-        if (decay == 0) {
-            decay = 255;
-        }
-
-        if (messageDisplayed) {
-            const ddiff = @as(u8, @intFromFloat(rl.math.clamp(170 * dt, 0, 255)));
-            if (decay <= 1) {
-                decay = 0;
-            } else {
-                decay -= ddiff;
-            }
-        }
 
         if (s.DEBUG_MODE) {
             rl.drawFPS(

@@ -8,6 +8,7 @@ const sm = @import("../states/smState.zig");
 const WalkingState = @import("../states/walking.zig").WalkingState;
 const BattleState = @import("../states/battle.zig").BattleState;
 const ShopState = @import("../states/shop.zig").ShopState;
+const ShopItem = @import("shopitem.zig").ShopItem;
 
 pub var DEBUG_MODE = false;
 
@@ -30,6 +31,7 @@ pub const State = struct {
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
     messages: ?std.ArrayList([:0]const u8),
     stateMachine: ?*@import("../states/stateMachine.zig").StateMachine,
+    stateMsgDecay: u8 = 255,
 
     pub fn goToNextMapNode(self: *@This()) void {
         if (self.map) |map| {
@@ -54,6 +56,122 @@ pub const State = struct {
             self.currentMap = self.map.?.currentMapCount;
             self.currentNode = 0;
             self.grid.clearTextures();
+        }
+    }
+
+    pub fn generateNextMap(self: *@This(), name: [:0]const u8, nodeType: m.MapNodeType) !void {
+        // Generate a new map using seed from State.
+        // Maps should all contain the same number of nodes but
+        // what each node consists of should be random.
+
+        const List = std.ArrayList(m.MapNode);
+        const MonsterList = std.ArrayList(mob.Monster);
+        const ShopItems = std.ArrayList(ShopItem);
+
+        var numWalkingNodes = self.rand.intRangeAtMost(
+            u4,
+            2,
+            4,
+        );
+
+        if (nodeType == .SHOP) {
+            numWalkingNodes = 1;
+        }
+
+        var newMap = try self.allocator.create(m.Map);
+
+        newMap.currentMapCount = 1;
+        newMap.name = name;
+        newMap.nodes = List.init(self.allocator);
+        newMap.nextMap = null;
+
+        // TODO: Deallocate maps and nodes
+
+        for (0..numWalkingNodes) |i| {
+            // Create new nodes for the map, assigning a name.
+            const baseName = "Map Node ";
+            var floatLog: f16 = 1.0;
+            if (i > 0) {
+                floatLog = @floor(@log10(@as(f16, @floatFromInt(i))) + 1.0);
+            }
+            const digits: u64 = @as(u64, @intFromFloat(floatLog));
+            const buffer = try self.allocator.allocSentinel(
+                u8,
+                baseName.len + digits,
+                0,
+            );
+            _ = std.fmt.bufPrint(
+                buffer,
+                "{s}{d}",
+                .{ baseName, i },
+            ) catch "";
+
+            if (nodeType == .WALKING) {
+                var outsideNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.OUTSIDEGROUND),
+                    .background = self.textureMap.get(.OUTSIDEBACKGROUND),
+                    .monstersEntered = false,
+                    .monsters = null,
+                    .altarEvent = null,
+                    .shopItems = null,
+                    .stateMachine = null,
+                };
+                try outsideNode.init(self);
+                try newMap.addMapNode(outsideNode);
+            } else if (nodeType == .DUNGEON) {
+                var dungeonNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.DUNGEONGROUND),
+                    .background = self.textureMap.get(.DUNGEONBACKGROUND),
+                    .monsters = MonsterList.init(self.allocator),
+                    .monstersEntered = false,
+                    .altarEvent = null,
+                    .shopItems = null,
+                    .stateMachine = null,
+                };
+                try dungeonNode.init(self);
+                try newMap.addMapNode(dungeonNode);
+            } else if (nodeType == .SHOP) {
+                var shopNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.DUNGEONGROUND),
+                    .background = self.textureMap.get(.SHOPBACKGROUND),
+                    .monstersEntered = false,
+                    .monsters = null,
+                    .altarEvent = null,
+                    .shopItems = ShopItems.init(self.allocator),
+                    .stateMachine = null,
+                };
+                try shopNode.init(self);
+                try newMap.addMapNode(shopNode);
+            }
+        }
+
+        if (self.map) |_| {
+            // try state.map.?.addMap(state, "", newMap.nodes);
+
+            var currentMap: ?*m.Map = &self.map.?;
+            while (currentMap != null) {
+                newMap.currentMapCount = currentMap.?.currentMapCount + 1;
+                std.debug.print("Current map: {s}\n", .{currentMap.?.name});
+                if (currentMap.?.nextMap == null) {
+                    std.debug.print("next map null\n", .{});
+                    break;
+                } else {
+                    currentMap = currentMap.?.nextMap;
+                    std.debug.print("next map: {s}\n", .{currentMap.?.name});
+                }
+            }
+            std.debug.print("Adding next map as child to {s}\n", .{currentMap.?.name});
+
+            currentMap.?.nextMap = newMap;
+        } else {
+            newMap.currentMapCount = 1;
+            self.map = newMap.*;
         }
     }
 
@@ -95,7 +213,7 @@ pub const State = struct {
     }
 
     pub fn NextTurn(self: *@This()) void {
-        // TODO: Better way to handle waiting in between turns?
+        // TODO: Better way to handle battle turns?
         if (self.turn == .ENVIRONMENT) {
             self.turn = .MONSTER;
         } else if (self.turn == .MONSTER) {
@@ -211,6 +329,21 @@ pub const State = struct {
 
         if (self.stateMachine != null and self.stateMachine.?.state != null) {
             try self.stateMachine.?.state.?.update(self);
+        }
+
+        const messageDisplayed = self.displayMessages(self.stateMsgDecay);
+        if (self.stateMsgDecay == 0) {
+            self.stateMsgDecay = 255;
+        }
+
+        if (messageDisplayed) {
+            const ddiff = @as(u8, @intFromFloat(rl.math.clamp(170 * rl.getFrameTime(), 0, 255)));
+            const rs = @subWithOverflow(self.stateMsgDecay, ddiff);
+            if (rs[1] != 0) {
+                self.stateMsgDecay = 0;
+            } else {
+                self.stateMsgDecay -= ddiff;
+            }
         }
     }
 };
