@@ -5,6 +5,7 @@ const g = @import("../objects/grid.zig");
 const altar = @import("../events/altar.zig");
 const mob = @import("../objects/monster.zig");
 const shop = @import("../objects/shopitem.zig");
+const BasicDie = @import("../dice/basic.zig").BasicDie;
 
 pub const MapNode = struct {
     name: [:0]u8,
@@ -82,17 +83,30 @@ pub const MapNode = struct {
         }
 
         if (self.type == .SHOP) {
+            // TODO: Generate shop items
+            var d6 = try state.allocator.create(BasicDie);
+            d6.name = "d6";
+            d6.sides = 6;
+            d6.texture = state.textureMap.get(.D6);
+            d6.hovered = false;
+            d6.selected = false;
+            d6.index = 0;
+            d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
+            const d6die = try d6.die(&state.allocator);
+
+            var d4 = try state.allocator.create(BasicDie);
+            d4.name = "d4";
+            d4.sides = 4;
+            d4.texture = state.textureMap.get(.D4);
+            d4.hovered = false;
+            d4.selected = false;
+            d4.index = 0;
+            d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
+            const d4die = try d4.die(&state.allocator);
+
             try self.addShopItem(.{
-                .name = "d6",
-                .die = .{
-                    .name = "d6",
-                    .sides = 6,
-                    .texture = state.textureMap.get(.D6),
-                    .hovered = false,
-                    .selected = false,
-                    .index = 0,
-                    .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
-                },
+                .name = "d4",
+                .die = d6die,
                 .price = 4,
                 .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
                 .texture = state.textureMap.get(.SHOPCARD).?,
@@ -100,15 +114,7 @@ pub const MapNode = struct {
             });
             try self.addShopItem(.{
                 .name = "Crit d4",
-                .die = .{
-                    .name = "Crit d4",
-                    .sides = 4,
-                    .texture = state.textureMap.get(.D4),
-                    .hovered = false,
-                    .selected = false,
-                    .index = 1,
-                    .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
-                },
+                .die = d4die,
                 .price = 4,
                 .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
                 .texture = state.textureMap.get(.SHOPCARD).?,

@@ -33,13 +33,13 @@ pub const State = struct {
     stateMachine: ?*@import("../states/stateMachine.zig").StateMachine,
     stateMsgDecay: u8 = 255,
 
-    pub fn goToNextMapNode(self: *@This()) void {
+    pub fn goToNextMapNode(self: *@This()) !void {
         if (self.map) |map| {
             const numnodes = map.nodes.items.len;
             if ((self.currentNode + 1) >= numnodes) {
                 self.currentNode = 0;
                 std.debug.print("Resetting map node {d}\n", .{self.currentNode});
-                self.goToNextMap();
+                try self.goToNextMap();
             } else {
                 self.currentNode += 1;
                 std.debug.print("Going to map node {d}\n", .{self.currentNode});
@@ -50,12 +50,15 @@ pub const State = struct {
         }
     }
 
-    pub fn goToNextMap(self: *@This()) void {
+    pub fn goToNextMap(self: *@This()) !void {
         if (self.map.?.nextMap) |nm| {
             self.map = nm.*;
             self.currentMap = self.map.?.currentMapCount;
             self.currentNode = 0;
             self.grid.clearTextures();
+        } else {
+            try self.generateNextMap("MORE DUNGEON", .DUNGEON);
+            try self.goToNextMap();
         }
     }
 
@@ -166,7 +169,7 @@ pub const State = struct {
                     std.debug.print("next map: {s}\n", .{currentMap.?.name});
                 }
             }
-            std.debug.print("Adding next map as child to {s}\n", .{currentMap.?.name});
+            std.debug.print("Adding next map {s} as child to {s}\n", .{ newMap.name, currentMap.?.name });
 
             currentMap.?.nextMap = newMap;
         } else {
@@ -278,9 +281,9 @@ pub const State = struct {
                 try self.stateMachine.?.setState(nextState.?, self);
             } else if (curState.smType != .TUTORIAL) {
                 try self.stateMachine.?.clearState();
-                std.debug.print("TRANSINTION FROM WALKING\n\n", .{});
+                std.debug.print("TRANSITION FROM WALKING\n\n", .{});
                 // Next state is null and current state is WALKING, go to next map node.
-                self.goToNextMapNode();
+                try self.goToNextMapNode();
                 const monster = try self.getMonster();
                 var nextSmState: ?*sm.SMState = null;
                 if (monster != null) {

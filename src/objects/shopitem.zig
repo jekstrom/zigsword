@@ -6,7 +6,7 @@ const d = @import("../die.zig");
 
 pub const ShopItem = struct {
     name: [:0]const u8,
-    die: ?d.Die,
+    die: ?*d.Die,
     price: u8,
     pos: rl.Vector2,
     texture: rl.Texture,

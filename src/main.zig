@@ -12,11 +12,12 @@ const m = @import("map/map.zig");
 const mob = @import("objects/monster.zig");
 const enums = @import("enums.zig");
 const d = @import("die.zig");
+const BasicDie = @import("dice/basic.zig").BasicDie;
 const shop = @import("objects/shopitem.zig");
 const textures = @import("textures.zig");
 const sm = @import("states/smState.zig");
 
-pub fn drawUi(state: *s.State, topUI: f32) void {
+pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
     if (state.textureMap.get(.SwordIcon)) |texture| {
         rl.drawTexturePro(
             texture,
@@ -158,7 +159,7 @@ pub fn drawUi(state: *s.State, topUI: f32) void {
     for (0..state.player.dice.?.items.len) |i| {
         const die = state.player.dice.?.items[i];
         // TODO: make a layout manager for ui elements.
-        die.draw(state);
+        try die.draw(state);
     }
 
     var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
@@ -210,7 +211,7 @@ pub fn main() anyerror!void {
 
     const List = std.ArrayList(g.CellTexture);
     const AltarHistoryList = std.ArrayList(ah.AltarHistory);
-    const DiceList = std.ArrayList(d.Die);
+    const DiceList = std.ArrayList(*d.Die);
     const MessageList = std.ArrayList([:0]const u8);
     const PlayerMessageList = std.ArrayList([:0]const u8);
 
@@ -339,34 +340,38 @@ pub fn main() anyerror!void {
     var xoffset: f32 = 50.0;
     while (dcount < numd6) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
-        try state.player.dice.?.append(.{
-            .name = "Basic d6",
-            .sides = 6,
-            .texture = state.textureMap.get(.D6),
-            .hovered = false,
-            .selected = false,
-            .index = dcount,
-            .pos = .{
-                .x = state.grid.getWidth() - 550 + xoffset,
-                .y = topUI + 10,
-            },
-        });
+        var d6 = try state.allocator.create(BasicDie);
+        d6.name = "Basic d6";
+        d6.sides = 6;
+        d6.texture = state.textureMap.get(.D6);
+        d6.hovered = false;
+        d6.selected = false;
+        d6.index = dcount;
+        d6.pos = .{
+            .x = state.grid.getWidth() - 550 + xoffset,
+            .y = topUI + 10,
+        };
+        const d6die = try d6.die(&state.allocator);
+
+        try state.player.dice.?.append(d6die);
     }
     xoffset += 50;
     while (dcount < numd4) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
-        try state.player.dice.?.append(.{
-            .name = "Basic d4",
-            .sides = 4,
-            .texture = state.textureMap.get(.D4),
-            .hovered = false,
-            .selected = false,
-            .index = dcount + numd6,
-            .pos = .{
-                .x = state.grid.getWidth() - 550 + xoffset,
-                .y = topUI + 10,
-            },
-        });
+        var d4 = try state.allocator.create(BasicDie);
+        d4.name = "Basic d4";
+        d4.sides = 4;
+        d4.texture = state.textureMap.get(.D4);
+        d4.hovered = false;
+        d4.selected = false;
+        d4.index = dcount;
+        d4.pos = .{
+            .x = state.grid.getWidth() - 550 + xoffset,
+            .y = topUI + 10,
+        };
+        const d4die = try d4.die(&state.allocator);
+
+        try state.player.dice.?.append(d4die);
     }
 
     rl.setTargetFPS(60);
@@ -474,7 +479,7 @@ pub fn main() anyerror!void {
         try currentMapNode.?.update(&state);
         try state.update();
 
-        drawUi(&state, topUI);
+        try drawUi(&state, topUI);
 
         if (s.DEBUG_MODE) {
             rl.drawFPS(

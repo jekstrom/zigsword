@@ -6,13 +6,10 @@ const s = @import("../objects/state.zig");
 // State machine state types
 pub const SMStateType = enum(u8) {
     TUTORIAL,
-    PAUSE,
     WALKING,
     BATTLE,
     SHOP,
     ADVENTURERDEATH,
-    DONE,
-    WAIT,
 };
 
 // Interface for state machine states
@@ -80,7 +77,6 @@ pub const SMState = struct {
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
 
                 return @call(.always_inline, ptr_info.pointer.child.getIsComplete, .{self});
-                // return ptr_info.pointer.child.getIsComplete(self);
             }
         };
 

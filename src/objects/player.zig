@@ -16,7 +16,7 @@ pub const Player = struct {
     alignment: enums.Alignment,
     altarHistory: ?std.ArrayList(ah.AltarHistory),
     blessed: bool,
-    dice: ?std.ArrayList(d.Die),
+    dice: ?std.ArrayList(*d.Die),
     durability: u8,
     gold: i32,
     maxSelectedDice: u8,
@@ -24,7 +24,7 @@ pub const Player = struct {
     playerMsgDecay: u8 = 255,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
-    pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) !void {
+    pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) anyerror!void {
         // self.durability -= 20;
 
         var dice = self.dice;
@@ -36,10 +36,10 @@ pub const Player = struct {
         var result: i32 = 0;
         for (0..dice.?.items.len) |i| {
             const die = dice.?.items[i];
-            if (die.selected) {
-                const dieResult = die.roll(state);
+            if (try die.getSelected()) {
+                const dieResult = try die.roll(state);
                 result += dieResult;
-                std.debug.print("Roll result: {d}/{d}\n", .{ dieResult, die.sides });
+                std.debug.print("Roll result: {d}/{d}\n", .{ dieResult, try die.getSides() });
             }
         }
 
@@ -49,7 +49,7 @@ pub const Player = struct {
         var removedCount: i32 = 0;
         while (i > 0) {
             i -= 1;
-            if (dice.?.items[i].selected) {
+            if (try dice.?.items[i].getSelected()) {
                 removedCount += 1;
                 _ = dice.?.orderedRemove(i);
             }
@@ -105,7 +105,7 @@ pub const Player = struct {
     }
 
     // Update based on actions player has taken.
-    pub fn update(self: *@This(), state: *s.State) !void {
+    pub fn update(self: *@This(), state: *s.State) anyerror!void {
         // if (self.stateMachine != null and self.stateMachine.?.state.getIsComplete()) {
         //     // do state transition
         //     const nextState: ?*@import("../states/smState.zig").SMState = self.stateMachine.?.state.nextState;
@@ -126,6 +126,7 @@ pub const Player = struct {
             self.equiped = false;
             state.adventurer.pos.x = -200;
             state.mode = .ADVENTURERDEATH;
+            self.rotation = 180.0;
         } else if (state.adventurer.entered(state)) {
             // This is a toggle, not a continuous check
             self.equiped = true;
@@ -188,8 +189,9 @@ pub const Player = struct {
 
         if (self.dice) |dice| {
             for (0..dice.items.len) |i| {
-                dice.items[i].index = i;
-                dice.items[i].update(state);
+                try dice.items[i].setIndex(i);
+                var dd = dice.items[i];
+                try dd.update(state);
             }
         }
     }
