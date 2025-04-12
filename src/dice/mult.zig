@@ -52,8 +52,12 @@ pub const MultDie = struct {
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         const result = state.rand.intRangeAtMost(u16, 1, self.sides);
+        std.debug.print("Roll result {d}/{d}\n", .{ result, self.sides });
         // Add result as multiplier to current dice totals
-        const curTotal: u16 = prevRollResult.items[prevRollResult.items.len - 1].num;
+        var curTotal: u16 = 1;
+        if (prevRollResult.items.len > 0) {
+            curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
+        }
         std.debug.print("MULT {d} * {d}\n", .{ result, curTotal });
         return .{
             .num = result * curTotal,

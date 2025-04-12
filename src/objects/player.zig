@@ -42,7 +42,6 @@ pub const Player = struct {
             const die = dice.?.items[i];
             if (try die.getSelected()) {
                 const rollResult = try die.roll(state, &rollResults);
-                std.debug.print("Roll result {d}/{d}\n", .{ rollResult.num, try die.getSides() });
                 try rollResults.append(rollResult);
             }
         }

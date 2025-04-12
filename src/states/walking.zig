@@ -43,9 +43,9 @@ pub const WalkingState = struct {
         }
         if (!self.doExit and entered and curTime - self.startTime > waitSeconds) {
             if (currentMapNode) |cn| {
-                if (cn.altarEvent != null) {
-                    try cn.altarEvent.?.handle(state);
-                    if (cn.altarEvent.?.baseEvent.handled and (curTime - self.startTime) > waitSeconds) {
+                if (cn.event != null) {
+                    try cn.event.?.handle(state);
+                    if (try cn.event.?.getHandled() and (curTime - self.startTime) > waitSeconds) {
                         // Reset the clock to give time to finish the altar event
                         self.startTime = rl.getTime();
                         self.doExit = true;

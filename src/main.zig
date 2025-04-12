@@ -2,21 +2,16 @@ const rl = @import("raylib");
 const ui = @import("raygui");
 const std = @import("std");
 const s = @import("objects/state.zig");
-const g = @import("objects/grid.zig");
-const p = @import("objects/player.zig");
-const a = @import("objects/adventurer.zig");
-const w = @import("walkingevent.zig");
-const e = @import("events/altar.zig");
-const ah = @import("altarHistory.zig");
-const m = @import("map/map.zig");
-const mob = @import("objects/monster.zig");
+const Grid = @import("objects/grid.zig").Grid;
+const Cell = @import("objects/grid.zig").Cell;
+const Adventurer = @import("objects/adventurer.zig").Adventurer;
+const AltarHistory = @import("altarHistory.zig").AltarHistory;
 const enums = @import("enums.zig");
-const d = @import("die.zig");
 const BasicDie = @import("dice/basic.zig").BasicDie;
 const MultDie = @import("dice/mult.zig").MultDie;
-const shop = @import("objects/shopitem.zig");
+const Die = @import("die.zig").Die;
 const textures = @import("textures.zig");
-const sm = @import("states/smState.zig");
+const SMState = @import("states/smState.zig").SMState;
 
 pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
     if (state.textureMap.get(.SwordIcon)) |texture| {
@@ -180,7 +175,7 @@ pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
 }
 
 pub fn generateAdventurer(state: *s.State) void {
-    const adventurer: a.Adventurer = .{
+    const adventurer: Adventurer = .{
         .health = 100,
         .name = "Bob",
         .nameKnown = true,
@@ -210,9 +205,9 @@ pub fn main() anyerror!void {
     // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     // const allocator = gpa.allocator();
 
-    const List = std.ArrayList(g.CellTexture);
-    const AltarHistoryList = std.ArrayList(ah.AltarHistory);
-    const DiceList = std.ArrayList(*d.Die);
+    const List = std.ArrayList(@import("objects/grid.zig").CellTexture);
+    const AltarHistoryList = std.ArrayList(AltarHistory);
+    const DiceList = std.ArrayList(*Die);
     const MessageList = std.ArrayList([:0]const u8);
     const PlayerMessageList = std.ArrayList([:0]const u8);
 
@@ -272,23 +267,23 @@ pub fn main() anyerror!void {
         .textureMap = map,
         .grid = .{
             .cellSize = 48,
-            .cells = [_][g.Grid.numCols]g.Cell{
-                [_]g.Cell{.{
+            .cells = [_][Grid.numCols]Cell{
+                [_]Cell{.{
                     .id = 0,
                     .hover = false,
                     .pos = .{ .x = 0, .y = 0 },
                     .textures = List.init(allocator),
-                }} ** g.Grid.numCols,
-            } ** g.Grid.numRows,
+                }} ** Grid.numCols,
+            } ** Grid.numRows,
         },
         .allocator = allocator,
         .rand = rand,
-        .randomNumbers = [_][g.Grid.numCols]u16{[_]u16{0} ** g.Grid.numCols} ** g.Grid.numRows,
+        .randomNumbers = [_][Grid.numCols]u16{[_]u16{0} ** Grid.numCols} ** Grid.numRows,
         .messages = MessageList.init(allocator),
     };
 
-    for (0..g.Grid.numRows) |r| {
-        for (0..g.Grid.numCols) |c| {
+    for (0..Grid.numRows) |r| {
+        for (0..Grid.numCols) |c| {
             state.randomNumbers[r][c] = state.rand.intRangeAtMost(u16, 0, 65535);
         }
     }
@@ -323,7 +318,7 @@ pub fn main() anyerror!void {
         .isComplete = false,
         .startTime = rl.getTime(),
     };
-    const tutorialSmState: *sm.SMState = try tutorialState.smState(&allocator);
+    const tutorialSmState: *SMState = try tutorialState.smState(&allocator);
 
     var statemachine = try allocator.create(@import("states/stateMachine.zig").StateMachine);
     statemachine.allocator = &allocator;
@@ -533,8 +528,8 @@ pub fn main() anyerror!void {
         }
     }
 
-    for (0..@as(usize, @intCast(g.Grid.numRows))) |r| {
-        for (0..@as(usize, @intCast(g.Grid.numCols))) |c| {
+    for (0..@as(usize, @intCast(Grid.numRows))) |r| {
+        for (0..@as(usize, @intCast(Grid.numCols))) |c| {
             state.grid.cells[r][c].textures.deinit();
         }
     }

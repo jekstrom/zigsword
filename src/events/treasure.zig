@@ -2,43 +2,39 @@ const rl = @import("raylib");
 const ui = @import("raygui");
 const std = @import("std");
 const s = @import("../objects/state.zig");
-const enums = @import("../enums.zig");
 const evt = @import("event.zig");
 
 // This is an event that can occur while in the walking mode.
-pub const AlterWalkingEvent = struct {
+pub const TreasureWalkingEvent = struct {
     name: [:0]const u8,
     eventType: evt.EventType,
     pos: rl.Vector2,
     handled: bool,
-    alignment: enums.Alignment,
+    gold: i32 = 1,
 
     pub fn getName(ptr: *anyopaque) anyerror![:0]const u8 {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.name;
     }
 
     pub fn getEventType(ptr: *anyopaque) anyerror!evt.EventType {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.eventType;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.pos;
     }
 
     pub fn getHandled(ptr: *anyopaque) anyerror!bool {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.handled;
     }
 
     pub fn draw(ptr: *anyopaque, state: *s.State) void {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
-        var texture = state.textureMap.get(.GOODALTAR);
-        if (self.alignment == .EVIL) {
-            texture = state.textureMap.get(.EVILALTAR);
-        }
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
+        const texture = state.textureMap.get(.TREASURECHEST);
 
         if (texture) |t| {
             const textureOffsetRect: rl.Rectangle = .{
@@ -65,7 +61,7 @@ pub const AlterWalkingEvent = struct {
     }
 
     pub fn handle(ptr: *anyopaque, state: *s.State) !void {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
         if (self.handled) {
             return;
         }
@@ -83,8 +79,8 @@ pub const AlterWalkingEvent = struct {
         const result = ui.guiMessageBox(
             messageRect,
             self.name,
-            "You encounter an altar to $DEITY",
-            "next;dip;pray",
+            "You find a treasure chest",
+            "next;open",
         );
         if (result == 0) {
             std.debug.print("{s} x\n", .{self.name});
@@ -96,17 +92,11 @@ pub const AlterWalkingEvent = struct {
             self.handled = true;
         }
         if (result == 2) {
-            const success = self.alignment == state.player.alignment;
-            try state.player.altarHistory.?.append(.{
-                .name = self.name,
-                .success = success,
-            });
+            // TODO: Failure event - mimic battle?
+            state.player.gold += self.gold;
 
-            std.debug.print("{s} dip\n", .{self.name});
-            self.handled = true;
-        }
-        if (result == 3) {
-            std.debug.print("{s} pray\n", .{self.name});
+            std.debug.print("{s} open\n", .{self.name});
+            std.debug.print("Added {d} gold to player\n", .{self.gold});
             self.handled = true;
         }
 
@@ -121,7 +111,7 @@ pub const AlterWalkingEvent = struct {
         );
     }
 
-    pub fn event(self: *AlterWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
+    pub fn event(self: *TreasureWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
         return try evt.Event.init(
             self,
             self.name,

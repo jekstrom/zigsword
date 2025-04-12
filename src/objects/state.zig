@@ -117,7 +117,7 @@ pub const State = struct {
                     .background = self.textureMap.get(.OUTSIDEBACKGROUND),
                     .monstersEntered = false,
                     .monsters = null,
-                    .altarEvent = null,
+                    .event = null,
                     .shopItems = null,
                     .stateMachine = null,
                 };
@@ -131,7 +131,7 @@ pub const State = struct {
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
                     .monsters = MonsterList.init(self.allocator),
                     .monstersEntered = false,
-                    .altarEvent = null,
+                    .event = null,
                     .shopItems = null,
                     .stateMachine = null,
                 };
@@ -145,7 +145,7 @@ pub const State = struct {
                     .background = self.textureMap.get(.SHOPBACKGROUND),
                     .monstersEntered = false,
                     .monsters = null,
-                    .altarEvent = null,
+                    .event = null,
                     .shopItems = ShopItems.init(self.allocator),
                     .stateMachine = null,
                 };

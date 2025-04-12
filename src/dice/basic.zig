@@ -50,11 +50,15 @@ pub const BasicDie = struct {
     }
 
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
-        _ = prevRollResult;
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         const result = state.rand.intRangeAtMost(u16, 1, self.sides);
+        std.debug.print("Roll result {d}/{d}\n", .{ result, self.sides });
+        var curTotal: u16 = 0;
+        if (prevRollResult.items.len > 0) {
+            curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
+        }
         return .{
-            .num = result,
+            .num = result + curTotal,
             .sides = self.sides,
             .rarity = 0,
             .color = 0,

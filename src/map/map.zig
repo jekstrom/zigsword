@@ -3,6 +3,8 @@ const std = @import("std");
 const s = @import("../objects/state.zig");
 const g = @import("../objects/grid.zig");
 const altar = @import("../events/altar.zig");
+const Event = @import("../events/event.zig").Event;
+const treasure = @import("../events/treasure.zig");
 const mob = @import("../objects/monster.zig");
 const shop = @import("../objects/shopitem.zig");
 const BasicDie = @import("../dice/basic.zig").BasicDie;
@@ -14,7 +16,7 @@ pub const MapNode = struct {
     background: ?rl.Texture,
     monsters: ?std.ArrayList(mob.Monster),
     monstersEntered: bool,
-    altarEvent: ?altar.AlterWalkingEvent,
+    event: ?*Event,
     shopItems: ?std.ArrayList(shop.ShopItem),
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
@@ -64,21 +66,19 @@ pub const MapNode = struct {
                     .messages = MonsterMessages.init(state.allocator),
                 });
             } else if (nodeContents > 8 and nodeContents <= 15) {
-                std.debug.print("Adding Altar to node {s}\n", .{self.name});
+                std.debug.print("Adding Treasure Chest to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
-                const walkingEvent: altar.AlterWalkingEvent = .{
-                    .baseEvent = .{
-                        .handled = false,
-                        .name = "Altar",
-                        .type = .ALTAR,
-                        .pos = .{
-                            .x = groundCenter.x + 100,
-                            .y = groundCenter.y - 110,
-                        },
-                    },
-                    .alignment = .GOOD,
+                var walkingEvent = try state.allocator.create(treasure.TreasureWalkingEvent);
+                walkingEvent.gold = 10;
+                walkingEvent.handled = false;
+                walkingEvent.name = "Treasure Chest";
+                walkingEvent.eventType = .CHEST;
+                walkingEvent.pos = .{
+                    .x = groundCenter.x + 100,
+                    .y = groundCenter.y - 110,
                 };
-                self.altarEvent = walkingEvent;
+                const event = try walkingEvent.event(&state.allocator);
+                self.event = event;
             }
         }
 
@@ -280,8 +280,8 @@ pub const MapNode = struct {
             );
         }
 
-        if (self.altarEvent) |evt| {
-            evt.draw(state);
+        if (self.event) |evt| {
+            try evt.draw(state);
         }
 
         if (self.monsters != null and self.monsters.?.items.len > 0) {

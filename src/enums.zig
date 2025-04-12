@@ -13,6 +13,7 @@ pub const TextureType = enum(u8) {
     SHOPBACKGROUND,
     GOODALTAR,
     EVILALTAR,
+    TREASURECHEST,
     GREENGOBLIN,
     REDGOBLIN,
     SHOPCARD,
