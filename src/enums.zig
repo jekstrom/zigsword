@@ -16,6 +16,7 @@ pub const TextureType = enum(u8) {
     TREASURECHEST,
     GREENGOBLIN,
     REDGOBLIN,
+    BOSS,
     SHOPCARD,
     D4,
     D6,

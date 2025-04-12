@@ -8,6 +8,7 @@ const d = @import("../die.zig");
 const shop = @import("shopitem.zig");
 const m = @import("monster.zig");
 const RollResult = @import("../dice/rollresult.zig").RollResult;
+const Rune = @import("../runes/rune.zig").Rune;
 
 pub const Player = struct {
     pos: rl.Vector2,
@@ -24,6 +25,7 @@ pub const Player = struct {
     messages: ?std.ArrayList([:0]const u8),
     playerMsgDecay: u8 = 255,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
+    runes: ?std.ArrayList(*Rune),
 
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) anyerror!void {
         // self.durability -= 20;
@@ -45,22 +47,47 @@ pub const Player = struct {
                 try rollResults.append(rollResult);
             }
         }
-        const result = rollResults.items[rollResults.items.len - 1].num;
+        var result: u16 = 0;
+        if (rollResults.items.len > 0) {
+            result = rollResults.items[rollResults.items.len - 1].num;
+        }
         std.debug.print("Final Roll result: {d} from {d} dice\n", .{ result, rollResults.items.len });
 
+        if (self.runes != null and self.runes.?.items.len > 0) {
+            // Handle runes
+            const runesList: []*Rune = self.runes.?.items;
+            for (0..runesList.len) |i| {
+                var r = runesList[i];
+                try r.handle(state, &rollResults);
+                std.debug.print("Rune {s} activated \n", .{try r.getName()});
+            }
+        }
+
+        std.debug.print("ALL DICE: \n", .{});
+        for (0..self.dice.?.items.len) |x| {
+            std.debug.print("die: {d} {s}\n", .{ self.dice.?.items[x].index, self.dice.?.items[x].name });
+        }
+        std.debug.print("-------\n", .{});
+
         // remove selected dice
-        var i = dice.?.items.len;
-        const prevLen = dice.?.items.len;
+        var i = self.dice.?.items.len;
+        // Update new list with remaining dice that are not being removed.
+        var newDice = std.ArrayList(*d.Die).init(state.allocator);
+
         var removedCount: i32 = 0;
         while (i > 0) {
             i -= 1;
-            if (try dice.?.items[i].getSelected()) {
+            if (try self.dice.?.items[i].getSelected()) {
                 removedCount += 1;
                 _ = dice.?.orderedRemove(i);
+            } else {
+                try newDice.insert(0, self.dice.?.items[i]);
             }
         }
-        // Make sure the size of the list is equal to the number of elements
-        try self.dice.?.resize(prevLen - @as(usize, @intCast(removedCount)));
+
+        self.dice.?.clearAndFree();
+        self.dice.?.deinit();
+        self.dice = newDice;
 
         var damageScaled = result;
 
@@ -93,6 +120,14 @@ pub const Player = struct {
             ) catch "";
             try monster.messages.?.append(buffer);
         }
+    }
+
+    pub fn addDie(self: *@This(), die: *d.Die) !void {
+        if (self.dice == null) {
+            std.debug.assert(false);
+        }
+
+        try self.dice.?.append(die);
     }
 
     pub fn purchaseItem(self: *@This(), shopItem: shop.ShopItem) !bool {

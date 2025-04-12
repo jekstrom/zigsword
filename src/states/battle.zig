@@ -50,7 +50,7 @@ pub const BattleState = struct {
                             // TODO: handle turns better
                             self.startTime = rl.getTime();
                             state.NextTurn();
-                        } else if (state.turn == .PLAYER) {
+                        } else if (state.turn == .PLAYER and state.player.dice != null and state.player.dice.?.items.len > 0) {
                             if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
                                 try state.player.attack(state, monster.?);
                                 self.startTime = rl.getTime();

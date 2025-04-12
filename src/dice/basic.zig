@@ -59,6 +59,7 @@ pub const BasicDie = struct {
         }
         return .{
             .num = result + curTotal,
+            .baseNum = result,
             .sides = self.sides,
             .rarity = 0,
             .color = 0,

@@ -61,6 +61,7 @@ pub const MultDie = struct {
         std.debug.print("MULT {d} * {d}\n", .{ result, curTotal });
         return .{
             .num = result * curTotal,
+            .baseNum = result,
             .sides = self.sides,
             .rarity = 0,
             .color = 0,

@@ -10,6 +10,8 @@ const enums = @import("enums.zig");
 const BasicDie = @import("dice/basic.zig").BasicDie;
 const MultDie = @import("dice/mult.zig").MultDie;
 const Die = @import("die.zig").Die;
+const Rune = @import("runes/rune.zig").Rune;
+const KinRune = @import("runes/kin.zig").KinRune;
 const textures = @import("textures.zig");
 const SMState = @import("states/smState.zig").SMState;
 
@@ -172,6 +174,14 @@ pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
         25,
         .yellow,
     );
+
+    if (state.player.runes != null and state.player.runes.?.items.len > 0) {
+        for (0..state.player.runes.?.items.len) |i| {
+            const rune = state.player.runes.?.items[i];
+            // TODO: make a layout manager for ui elements.
+            try rune.draw(state);
+        }
+    }
 }
 
 pub fn generateAdventurer(state: *s.State) void {
@@ -208,6 +218,7 @@ pub fn main() anyerror!void {
     const List = std.ArrayList(@import("objects/grid.zig").CellTexture);
     const AltarHistoryList = std.ArrayList(AltarHistory);
     const DiceList = std.ArrayList(*Die);
+    const RuneList = std.ArrayList(*Rune);
     const MessageList = std.ArrayList([:0]const u8);
     const PlayerMessageList = std.ArrayList([:0]const u8);
 
@@ -248,6 +259,7 @@ pub fn main() anyerror!void {
             .altarHistory = null,
             .blessed = false,
             .dice = null,
+            .runes = null,
             .durability = 100,
             .gold = 0,
             .maxSelectedDice = 3,
@@ -293,6 +305,7 @@ pub fn main() anyerror!void {
 
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
+    try state.generateNextMap("Boss", .BOSS);
     try state.generateNextMap("Dungeon", .DUNGEON);
     try state.generateNextMap("Shop", .SHOP);
     state.map.?.print();
@@ -310,7 +323,18 @@ pub fn main() anyerror!void {
     // Set up memory for player state
     state.player.altarHistory = AltarHistoryList.init(allocator);
     state.player.dice = DiceList.init(allocator);
+    state.player.runes = RuneList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
+
+    // TEST RUNES
+    var kinRune: *KinRune = try allocator.create(KinRune);
+    kinRune.name = "Kin";
+    kinRune.pos = .{
+        .x = state.grid.getWidth() - 250.0,
+        .y = state.grid.topUI() + 100.0,
+    };
+    const kr = try kinRune.rune(&allocator);
+    try state.player.runes.?.append(kr);
 
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,

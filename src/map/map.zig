@@ -36,6 +36,40 @@ pub const MapNode = struct {
 
         //TODO: Better randomization for map node contents
 
+        if (self.type == .WALKING) {
+            if (nodeContents > 13) {
+                std.debug.print("Adding Altar to node {s}\n", .{self.name});
+                const groundCenter = state.grid.getGroundCenterPos();
+                var walkingEvent = try state.allocator.create(altar.AlterWalkingEvent);
+                walkingEvent.alignment = .GOOD;
+                walkingEvent.handled = false;
+                walkingEvent.name = "Good Altar";
+                walkingEvent.eventType = .ALTAR;
+                walkingEvent.pos = .{
+                    .x = groundCenter.x + 100,
+                    .y = groundCenter.y - 110,
+                };
+                const event = try walkingEvent.event(&state.allocator);
+                self.event = event;
+            }
+        }
+
+        if (self.type == .BOSS) {
+            std.debug.print("Adding Boss to node {s}\n", .{self.name});
+            try self.addMonster(.{
+                .name = "Boss",
+                .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
+                .nameKnown = false,
+                .speed = 0.15,
+                .health = 40,
+                .maxHealth = 40,
+                .damageRange = 35,
+                .dying = false,
+                .gold = state.rand.intRangeAtMost(u8, 10, 25),
+                .messages = MonsterMessages.init(state.allocator),
+            });
+        }
+
         if (self.type == .DUNGEON) {
             if (nodeContents <= 4) {
                 std.debug.print("Adding Green Goblin to node {s}\n", .{self.name});
@@ -69,7 +103,7 @@ pub const MapNode = struct {
                 std.debug.print("Adding Treasure Chest to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
                 var walkingEvent = try state.allocator.create(treasure.TreasureWalkingEvent);
-                walkingEvent.gold = 10;
+                walkingEvent.gold = state.rand.intRangeAtMost(i32, 1, 10);
                 walkingEvent.handled = false;
                 walkingEvent.name = "Treasure Chest";
                 walkingEvent.eventType = .CHEST;
@@ -188,7 +222,7 @@ pub const MapNode = struct {
         if (self.type == .SHOP and self.shopItems != null) {
             const mousepos = rl.getMousePosition();
             for (0..self.shopItems.?.items.len) |i| {
-                var item = &self.shopItems.?.items[i];
+                var item: *shop.ShopItem = &self.shopItems.?.items[i];
                 if (item.purchased) {
                     continue;
                 }
@@ -395,7 +429,7 @@ pub const MapNode = struct {
             }
         }
 
-        if (self.type == .DUNGEON) {
+        if (self.type == .DUNGEON or self.type == .BOSS) {
             // add ground textures
             const blackRect: rl.Rectangle = .{
                 .height = 100,
@@ -492,4 +526,5 @@ pub const MapNodeType = enum(u8) {
     WALKING,
     DUNGEON,
     SHOP,
+    BOSS,
 };

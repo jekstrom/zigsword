@@ -58,6 +58,8 @@ pub const State = struct {
             self.grid.clearTextures();
         } else {
             try self.generateNextMap("MORE DUNGEON", .DUNGEON);
+            try self.generateNextMap("MORE BOSS", .BOSS);
+            try self.generateNextMap("MORE SHOP", .SHOP);
             try self.goToNextMap();
         }
     }
@@ -137,6 +139,20 @@ pub const State = struct {
                 };
                 try dungeonNode.init(self);
                 try newMap.addMapNode(dungeonNode);
+            } else if (nodeType == .BOSS) {
+                var dungeonNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.DUNGEONGROUND),
+                    .background = self.textureMap.get(.DUNGEONBACKGROUND),
+                    .monsters = MonsterList.init(self.allocator),
+                    .monstersEntered = false,
+                    .event = null,
+                    .shopItems = null,
+                    .stateMachine = null,
+                };
+                try dungeonNode.init(self);
+                try newMap.addMapNode(dungeonNode);
             } else if (nodeType == .SHOP) {
                 var shopNode: m.MapNode = .{
                     .name = buffer,
@@ -156,7 +172,6 @@ pub const State = struct {
 
         if (self.map) |_| {
             // try state.map.?.addMap(state, "", newMap.nodes);
-
             var currentMap: ?*m.Map = &self.map.?;
             while (currentMap != null) {
                 newMap.currentMapCount = currentMap.?.currentMapCount + 1;
