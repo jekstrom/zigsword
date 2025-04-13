@@ -63,12 +63,6 @@ pub const Player = struct {
             }
         }
 
-        std.debug.print("ALL DICE: \n", .{});
-        for (0..self.dice.?.items.len) |x| {
-            std.debug.print("die: {d} {s}\n", .{ self.dice.?.items[x].index, self.dice.?.items[x].name });
-        }
-        std.debug.print("-------\n", .{});
-
         // remove selected dice
         var i = self.dice.?.items.len;
         // Update new list with remaining dice that are not being removed.
@@ -77,7 +71,7 @@ pub const Player = struct {
         var removedCount: i32 = 0;
         while (i > 0) {
             i -= 1;
-            if (try self.dice.?.items[i].getSelected()) {
+            if (try self.dice.?.items[i].getSelected() and try self.dice.?.items[i].getBroken()) {
                 removedCount += 1;
                 _ = dice.?.orderedRemove(i);
             } else {
@@ -113,6 +107,7 @@ pub const Player = struct {
                 digits,
                 0,
             );
+
             _ = std.fmt.bufPrint(
                 buffer,
                 "{d}",

@@ -14,7 +14,10 @@ pub const Die = struct {
     selected: bool,
     texture: ?rl.Texture,
     index: usize,
+    breakChance: u7,
+    broken: bool,
     getSidesFn: *const fn (ptr: *anyopaque) anyerror!u16,
+    getBrokenFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHoveredFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getSelectedFn: *const fn (ptr: *anyopaque) anyerror!bool,
@@ -53,6 +56,10 @@ pub const Die = struct {
         return self.setIndexFn(self.ptr, newIndex);
     }
 
+    pub fn getBroken(self: *@This()) anyerror!bool {
+        return self.getBrokenFn(self.ptr);
+    }
+
     pub fn update(self: *@This(), state: *s.State) anyerror!void {
         return self.updateFn(self.ptr, state);
     }
@@ -74,6 +81,7 @@ pub const Die = struct {
         selected: bool,
         texture: ?rl.Texture,
         index: usize,
+        breakChance: u7,
         allocator: *const std.mem.Allocator,
     ) !*Die {
         const T = @TypeOf(ptr);
@@ -143,6 +151,13 @@ pub const Die = struct {
                 return @call(.always_inline, ptr_info.pointer.child.getIndex, .{self});
             }
 
+            pub fn getBroken(pointer: *anyopaque) anyerror!bool {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getBroken, .{self});
+            }
+
             pub fn setIndex(pointer: *anyopaque, newIndex: usize) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -160,12 +175,14 @@ pub const Die = struct {
         sobj.selected = selected;
         sobj.texture = texture;
         sobj.index = index;
+        sobj.breakChance = breakChance;
         sobj.getSidesFn = gen.getSides;
         sobj.getPosFn = gen.getPos;
         sobj.getHoveredFn = gen.getHovered;
         sobj.getSelectedFn = gen.getSelected;
         sobj.getTextureFn = gen.getTexture;
         sobj.getIndexFn = gen.getIndex;
+        sobj.getBrokenFn = gen.getBroken;
         sobj.setIndexFn = gen.setIndex;
         sobj.updateFn = gen.update;
         sobj.drawFn = gen.draw;

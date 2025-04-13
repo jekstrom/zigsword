@@ -29,12 +29,9 @@ pub const ShopState = struct {
     pub fn update(ptr: *anyopaque, state: *s.State) anyerror!void {
         _ = state;
         const self: *ShopState = @ptrCast(@alignCast(ptr));
-        const waitSeconds: f64 = 2.0;
 
         if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
-            if (rl.getTime() - self.startTime > waitSeconds) {
-                self.isComplete = true;
-            }
+            self.isComplete = true;
         }
     }
 

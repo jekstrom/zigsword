@@ -13,6 +13,8 @@ pub const MultDie = struct {
     selected: bool,
     texture: ?rl.Texture,
     index: usize,
+    breakChance: u7,
+    broken: bool,
 
     pub fn getSides(ptr: *anyopaque) anyerror!u16 {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
@@ -49,6 +51,11 @@ pub const MultDie = struct {
         self.index = newIndex;
     }
 
+    pub fn getBroken(ptr: *anyopaque) anyerror!bool {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        return self.broken;
+    }
+
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         const result = state.rand.intRangeAtMost(u16, 1, self.sides);
@@ -59,16 +66,25 @@ pub const MultDie = struct {
             curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
         }
         std.debug.print("MULT {d} * {d}\n", .{ result, curTotal });
+
+        var broken = false;
+        if (self.breakChance > 0) {
+            const broke = state.rand.intRangeAtMost(u7, 1, std.math.maxInt(u7));
+            broken = self.breakChance <= broke;
+            self.broken = broken;
+        }
+
         return .{
             .num = result * curTotal,
             .baseNum = result,
             .sides = self.sides,
             .rarity = 0,
             .color = 0,
+            .broken = broken,
         };
     }
 
-    pub fn update(ptr: *anyopaque, state: *s.State) void {
+    pub fn update(ptr: *anyopaque, state: *s.State) !void {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
 
         const mousepos = rl.getMousePosition();
@@ -83,7 +99,7 @@ pub const MultDie = struct {
 
         for (0..numDice) |i| {
             const d = dice.?.items[i];
-            if (d.selected) {
+            if (try d.getSelected()) {
                 currentlySelectedDice += 1;
             }
         }
@@ -201,6 +217,7 @@ pub const MultDie = struct {
             self.selected,
             self.texture,
             self.index,
+            self.breakChance,
             allocator,
         );
     }

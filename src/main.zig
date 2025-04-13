@@ -305,8 +305,8 @@ pub fn main() anyerror!void {
 
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
-    try state.generateNextMap("Boss", .BOSS);
     try state.generateNextMap("Dungeon", .DUNGEON);
+    try state.generateNextMap("Boss", .BOSS);
     try state.generateNextMap("Shop", .SHOP);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
@@ -325,16 +325,6 @@ pub fn main() anyerror!void {
     state.player.dice = DiceList.init(allocator);
     state.player.runes = RuneList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
-
-    // TEST RUNES
-    var kinRune: *KinRune = try allocator.create(KinRune);
-    kinRune.name = "Kin";
-    kinRune.pos = .{
-        .x = state.grid.getWidth() - 250.0,
-        .y = state.grid.topUI() + 100.0,
-    };
-    const kr = try kinRune.rune(&allocator);
-    try state.player.runes.?.append(kr);
 
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,
@@ -366,6 +356,8 @@ pub fn main() anyerror!void {
         d6.texture = state.textureMap.get(.D6);
         d6.hovered = false;
         d6.selected = false;
+        d6.broken = false;
+        d6.breakChance = 99;
         d6.index = dcount;
         d6.pos = .{
             .x = state.grid.getWidth() - 550 + xoffset,
@@ -384,6 +376,8 @@ pub fn main() anyerror!void {
         d4.texture = state.textureMap.get(.D4);
         d4.hovered = false;
         d4.selected = false;
+        d4.broken = false;
+        d4.breakChance = 99;
         d4.index = dcount;
         d4.pos = .{
             .x = state.grid.getWidth() - 550 + xoffset,

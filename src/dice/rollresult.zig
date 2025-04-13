@@ -11,4 +11,5 @@ pub const RollResult = struct {
     sides: u16,
     rarity: u8,
     color: i32,
+    broken: bool,
 };

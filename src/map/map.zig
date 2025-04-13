@@ -8,6 +8,7 @@ const treasure = @import("../events/treasure.zig");
 const mob = @import("../objects/monster.zig");
 const shop = @import("../objects/shopitem.zig");
 const BasicDie = @import("../dice/basic.zig").BasicDie;
+const KinRune = @import("../runes/kin.zig").KinRune;
 
 pub const MapNode = struct {
     name: [:0]u8,
@@ -55,6 +56,14 @@ pub const MapNode = struct {
         }
 
         if (self.type == .BOSS) {
+            var kinRune: *KinRune = try state.allocator.create(KinRune);
+            kinRune.name = "Kin";
+            kinRune.pos = .{
+                .x = state.grid.getWidth() - 250.0,
+                .y = state.grid.topUI() + 100.0,
+            };
+            const kr = try kinRune.rune(&state.allocator);
+
             std.debug.print("Adding Boss to node {s}\n", .{self.name});
             try self.addMonster(.{
                 .name = "Boss",
@@ -66,6 +75,7 @@ pub const MapNode = struct {
                 .damageRange = 35,
                 .dying = false,
                 .gold = state.rand.intRangeAtMost(u8, 10, 25),
+                .rune = kr,
                 .messages = MonsterMessages.init(state.allocator),
             });
         }
@@ -83,6 +93,7 @@ pub const MapNode = struct {
                     .damageRange = 25,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
+                    .rune = null,
                     .messages = MonsterMessages.init(state.allocator),
                 });
             } else if (nodeContents > 4 and nodeContents <= 8) {
@@ -97,6 +108,7 @@ pub const MapNode = struct {
                     .damageRange = 35,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
+                    .rune = null,
                     .messages = MonsterMessages.init(state.allocator),
                 });
             } else if (nodeContents > 8 and nodeContents <= 15) {
@@ -124,6 +136,8 @@ pub const MapNode = struct {
             d6.texture = state.textureMap.get(.D6);
             d6.hovered = false;
             d6.selected = false;
+            d6.broken = false;
+            d6.breakChance = 0;
             d6.index = 0;
             d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
             const d6die = try d6.die(&state.allocator);
@@ -134,6 +148,8 @@ pub const MapNode = struct {
             d4.texture = state.textureMap.get(.D4);
             d4.hovered = false;
             d4.selected = false;
+            d4.broken = false;
+            d4.breakChance = 0;
             d4.index = 0;
             d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
             const d4die = try d4.die(&state.allocator);
@@ -215,6 +231,10 @@ pub const MapNode = struct {
                 if (hp <= 0 and !monster.dying) {
                     monster.dying = true;
                     state.player.gold += gold;
+                    if (monster.rune) |rune| {
+                        // TODO: Monster should have multiple runes, let the player choose one
+                        try state.player.runes.?.append(rune);
+                    }
                 }
             }
         }

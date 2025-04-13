@@ -79,7 +79,7 @@ pub const State = struct {
             4,
         );
 
-        if (nodeType == .SHOP) {
+        if (nodeType == .SHOP or nodeType == .BOSS) {
             numWalkingNodes = 1;
         }
 
@@ -290,6 +290,7 @@ pub const State = struct {
     pub fn update(self: *@This()) !void {
         if (self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
             // do state transition
+            std.debug.print("STATE COMPLETE\n\n", .{});
             const curState = self.stateMachine.?.state.?;
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
             if (nextState != null) {

@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const std = @import("std");
 const enums = @import("../enums.zig");
 const s = @import("state.zig");
+const Rune = @import("../runes/rune.zig").Rune;
 
 pub const Monster = struct {
     name: [:0]const u8,
@@ -13,6 +14,7 @@ pub const Monster = struct {
     damageRange: u8,
     dying: bool,
     gold: u8,
+    rune: ?*Rune,
     messages: ?std.ArrayList([:0]const u8),
     monsterMsgDecay: u8 = 255,
 
@@ -54,6 +56,7 @@ pub const Monster = struct {
                     digits,
                     0,
                 );
+
                 _ = std.fmt.bufPrint(
                     buffer,
                     "{d}",

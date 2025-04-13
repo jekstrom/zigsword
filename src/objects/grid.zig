@@ -59,69 +59,6 @@ pub const Cell = struct {
                 );
             }
         }
-        // if (s.DEBUG_MODE) {
-        //     var thickness: f32 = 1;
-        //     var color: rl.Color = .gray;
-        //     if (self.hover) {
-        //         thickness = 4;
-        //         color = .green;
-        //     }
-
-        //     var buffer: [8]u8 = std.mem.zeroes([8]u8);
-        //     const sx = std.fmt.bufPrintZ(
-        //         &buffer,
-        //         "{d},{d}",
-        //         .{ rownum, colnum },
-        //     ) catch "";
-
-        //     rl.drawText(
-        //         sx,
-        //         @as(i32, @intFromFloat(colnum)),
-        //         @as(i32, @intFromFloat(rownum)),
-        //         8,
-        //         color,
-        //     );
-
-        //     buffer = std.mem.zeroes([8]u8);
-        //     const s2 = std.fmt.bufPrintZ(
-        //         &buffer,
-        //         "{d}",
-        //         .{self.id},
-        //     ) catch "";
-
-        //     rl.drawText(
-        //         s2,
-        //         @as(i32, @intFromFloat(colnum)) + 2,
-        //         @as(i32, @intFromFloat(rownum)) + 10,
-        //         8,
-        //         color,
-        //     );
-
-        //     rl.drawLineEx(
-        //         .{ .x = colnum, .y = rownum },
-        //         .{ .x = colnum + cellSize, .y = rownum },
-        //         thickness,
-        //         color,
-        //     );
-        //     rl.drawLineEx(
-        //         .{ .x = colnum + cellSize, .y = rownum },
-        //         .{ .x = colnum + cellSize, .y = rownum + cellSize },
-        //         thickness,
-        //         color,
-        //     );
-        //     rl.drawLineEx(
-        //         .{ .x = colnum + cellSize, .y = rownum + cellSize },
-        //         .{ .x = colnum, .y = rownum + cellSize },
-        //         thickness,
-        //         color,
-        //     );
-        //     rl.drawLineEx(
-        //         .{ .x = colnum, .y = rownum + cellSize },
-        //         .{ .x = colnum, .y = rownum },
-        //         thickness,
-        //         color,
-        //     );
-        // }
     }
 };
 
