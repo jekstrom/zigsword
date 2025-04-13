@@ -6,7 +6,7 @@ const Die = @import("../die.zig").Die;
 
 // Linked List of dice roll results
 pub const RollResult = struct {
-    num: u16,
+    num: u32,
     baseNum: u16,
     sides: u16,
     rarity: u8,

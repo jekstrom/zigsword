@@ -8,6 +8,7 @@ const RollResult = @import("rollresult.zig").RollResult;
 pub const MultDie = struct {
     name: [:0]const u8,
     sides: u16,
+    nextResult: u16,
     pos: rl.Vector2,
     hovered: bool,
     selected: bool,
@@ -15,10 +16,17 @@ pub const MultDie = struct {
     index: usize,
     breakChance: u7,
     broken: bool,
+    tooltip: [:0]const u8,
 
     pub fn getSides(ptr: *anyopaque) anyerror!u16 {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.sides;
+    }
+
+    pub fn getNextResult(ptr: *anyopaque) anyerror!u16 {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        std.debug.print("MULT DIE GET NEXT RESULT {d}\n\n", .{self.nextResult});
+        return self.nextResult;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
@@ -51,6 +59,16 @@ pub const MultDie = struct {
         self.index = newIndex;
     }
 
+    pub fn getTooltip(ptr: *anyopaque) anyerror![:0]const u8 {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        return self.tooltip;
+    }
+
+    pub fn setTooltip(ptr: *anyopaque, newTooltip: *const [:0]const u8) anyerror!void {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        self.tooltip = newTooltip.*;
+    }
+
     pub fn getBroken(ptr: *anyopaque) anyerror!bool {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.broken;
@@ -58,10 +76,10 @@ pub const MultDie = struct {
 
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
-        const result = state.rand.intRangeAtMost(u16, 1, self.sides);
+        const result = self.nextResult;
         std.debug.print("Roll result {d}/{d}\n", .{ result, self.sides });
         // Add result as multiplier to current dice totals
-        var curTotal: u16 = 1;
+        var curTotal: u32 = 1;
         if (prevRollResult.items.len > 0) {
             curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
         }
@@ -73,6 +91,9 @@ pub const MultDie = struct {
             broken = self.breakChance <= broke;
             self.broken = broken;
         }
+
+        self.nextResult = 0;
+        self.tooltip = "";
 
         return .{
             .num = result * curTotal,
@@ -95,6 +116,11 @@ pub const MultDie = struct {
         if (dice == null) {
             // This should be impossible.
             std.debug.assert(false);
+        }
+
+        if (self.nextResult == 0) {
+            self.nextResult = state.rand.intRangeAtMost(u16, 1, self.sides);
+            std.debug.print("Calculating next result...{d}\n", .{self.nextResult});
         }
 
         for (0..numDice) |i| {
@@ -137,16 +163,24 @@ pub const MultDie = struct {
 
         if (hover) {
             var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
-            _ = std.fmt.bufPrintZ(
-                &buffer,
-                "{s}",
-                .{self.name},
-            ) catch "";
+            if (self.tooltip.len > 0) {
+                _ = std.fmt.bufPrintZ(
+                    &buffer,
+                    "{s}\n{s}",
+                    .{ self.name, self.tooltip },
+                ) catch "";
+            } else {
+                _ = std.fmt.bufPrintZ(
+                    &buffer,
+                    "{s}",
+                    .{self.name},
+                ) catch "";
+            }
 
             rl.drawRectangle(
                 @as(i32, @intFromFloat(mousepos.x)),
                 @as(i32, @intFromFloat(mousepos.y)) - 100,
-                100,
+                150,
                 70,
                 rl.getColor(0x0000D0),
             );
@@ -218,6 +252,7 @@ pub const MultDie = struct {
             self.texture,
             self.index,
             self.breakChance,
+            self.tooltip,
             allocator,
         );
     }

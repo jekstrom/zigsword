@@ -16,7 +16,10 @@ pub const Die = struct {
     index: usize,
     breakChance: u7,
     broken: bool,
+    nextResult: u16,
+    tooltip: [:0]const u8,
     getSidesFn: *const fn (ptr: *anyopaque) anyerror!u16,
+    getNextResultFn: *const fn (ptr: *anyopaque) anyerror!u16,
     getBrokenFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHoveredFn: *const fn (ptr: *anyopaque) anyerror!bool,
@@ -24,12 +27,18 @@ pub const Die = struct {
     getTextureFn: *const fn (ptr: *anyopaque) anyerror!?rl.Texture,
     getIndexFn: *const fn (ptr: *anyopaque) anyerror!usize,
     setIndexFn: *const fn (ptr: *anyopaque, newIndex: usize) anyerror!void,
+    getTooltipFn: *const fn (ptr: *anyopaque) anyerror![:0]const u8,
+    setTooltipFn: *const fn (ptr: *anyopaque, *const [:0]const u8) anyerror!void,
     rollFn: *const fn (ptr: *anyopaque, state: *s.State, prevRollResults: *const std.ArrayList(RollResult)) anyerror!RollResult,
     updateFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
     pub fn getSides(self: *@This()) anyerror!u16 {
         return self.getSidesFn(self.ptr);
+    }
+
+    pub fn getNextResult(self: *@This()) anyerror!u16 {
+        return self.getNextResultFn(self.ptr);
     }
 
     pub fn getPos(self: *@This()) anyerror!rl.Vector2 {
@@ -50,6 +59,14 @@ pub const Die = struct {
 
     pub fn getIndex(self: *@This()) anyerror!usize {
         return self.getIndexFn(self.ptr);
+    }
+
+    pub fn getTooltip(self: *@This()) anyerror![:0]const u8 {
+        return self.getTooltipFn(self.ptr);
+    }
+
+    pub fn setTooltip(self: *@This(), newTooltip: *const [:0]const u8) anyerror!void {
+        return self.setTooltipFn(self.ptr, newTooltip);
     }
 
     pub fn setIndex(self: *@This(), newIndex: usize) anyerror!void {
@@ -82,6 +99,7 @@ pub const Die = struct {
         texture: ?rl.Texture,
         index: usize,
         breakChance: u7,
+        tooltip: [:0]const u8,
         allocator: *const std.mem.Allocator,
     ) !*Die {
         const T = @TypeOf(ptr);
@@ -114,6 +132,13 @@ pub const Die = struct {
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
                 return @call(.always_inline, ptr_info.pointer.child.getSides, .{self});
+            }
+
+            pub fn getNextResult(pointer: *anyopaque) anyerror!u16 {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getNextResult, .{self});
             }
 
             pub fn getPos(pointer: *anyopaque) anyerror!rl.Vector2 {
@@ -151,6 +176,20 @@ pub const Die = struct {
                 return @call(.always_inline, ptr_info.pointer.child.getIndex, .{self});
             }
 
+            pub fn getTooltip(pointer: *anyopaque) anyerror![:0]const u8 {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getTooltip, .{self});
+            }
+
+            pub fn setTooltip(pointer: *anyopaque, newTooltip: *const [:0]const u8) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.setTooltip, .{ self, newTooltip });
+            }
+
             pub fn getBroken(pointer: *anyopaque) anyerror!bool {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -176,12 +215,16 @@ pub const Die = struct {
         sobj.texture = texture;
         sobj.index = index;
         sobj.breakChance = breakChance;
+        sobj.tooltip = tooltip;
         sobj.getSidesFn = gen.getSides;
+        sobj.getNextResultFn = gen.getNextResult;
         sobj.getPosFn = gen.getPos;
         sobj.getHoveredFn = gen.getHovered;
         sobj.getSelectedFn = gen.getSelected;
         sobj.getTextureFn = gen.getTexture;
         sobj.getIndexFn = gen.getIndex;
+        sobj.getTooltipFn = gen.getTooltip;
+        sobj.setTooltipFn = gen.setTooltip;
         sobj.getBrokenFn = gen.getBroken;
         sobj.setIndexFn = gen.setIndex;
         sobj.updateFn = gen.update;

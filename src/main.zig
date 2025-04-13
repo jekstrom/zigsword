@@ -11,7 +11,7 @@ const BasicDie = @import("dice/basic.zig").BasicDie;
 const MultDie = @import("dice/mult.zig").MultDie;
 const Die = @import("die.zig").Die;
 const Rune = @import("runes/rune.zig").Rune;
-const KinRune = @import("runes/kin.zig").KinRune;
+const FateRune = @import("runes/fate.zig").FateRune;
 const textures = @import("textures.zig");
 const SMState = @import("states/smState.zig").SMState;
 
@@ -348,6 +348,7 @@ pub fn main() anyerror!void {
     const numd6: u8 = 2;
     const numd4: u8 = 4 + numd6;
     var xoffset: f32 = 50.0;
+    const tooltip = "";
     while (dcount < numd6) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
         var d6 = try state.allocator.create(BasicDie);
@@ -358,7 +359,9 @@ pub fn main() anyerror!void {
         d6.selected = false;
         d6.broken = false;
         d6.breakChance = 99;
+        d6.nextResult = 0;
         d6.index = dcount;
+        d6.tooltip = tooltip;
         d6.pos = .{
             .x = state.grid.getWidth() - 550 + xoffset,
             .y = topUI + 10,
@@ -378,7 +381,9 @@ pub fn main() anyerror!void {
         d4.selected = false;
         d4.broken = false;
         d4.breakChance = 99;
+        d4.nextResult = 0;
         d4.index = dcount;
+        d4.tooltip = tooltip;
         d4.pos = .{
             .x = state.grid.getWidth() - 550 + xoffset,
             .y = topUI + 10,
@@ -387,6 +392,16 @@ pub fn main() anyerror!void {
 
         try state.player.dice.?.append(d4die);
     }
+
+    // TEST RUNES
+    var fateRune: *FateRune = try allocator.create(FateRune);
+    fateRune.name = "Fate";
+    fateRune.pos = .{
+        .x = state.grid.getWidth() - 250.0,
+        .y = state.grid.topUI() + 100.0,
+    };
+    const kr = try fateRune.rune(&allocator);
+    try state.player.runes.?.append(kr);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------

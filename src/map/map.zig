@@ -138,6 +138,7 @@ pub const MapNode = struct {
             d6.selected = false;
             d6.broken = false;
             d6.breakChance = 0;
+            d6.nextResult = 0;
             d6.index = 0;
             d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
             const d6die = try d6.die(&state.allocator);
@@ -150,6 +151,7 @@ pub const MapNode = struct {
             d4.selected = false;
             d4.broken = false;
             d4.breakChance = 0;
+            d4.nextResult = 0;
             d4.index = 0;
             d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
             const d4die = try d4.die(&state.allocator);

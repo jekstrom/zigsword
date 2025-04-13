@@ -36,16 +36,21 @@ pub const KinRune = struct {
         );
     }
 
-    pub fn handle(ptr: *anyopaque, state: *s.State, rollResults: *std.ArrayList(RollResult)) !void {
+    pub fn handle(ptr: *anyopaque, state: *s.State, rollResults: ?*std.ArrayList(RollResult)) !void {
         const self: *KinRune = @ptrCast(@alignCast(ptr));
         _ = self;
         var seen = std.AutoHashMap(u16, u16).init(state.allocator);
         defer seen.deinit();
 
-        for (0..rollResults.items.len) |i| {
+        if (rollResults == null) {
+            std.debug.print("Roll Results null\n", .{});
+            std.debug.assert(false);
+        }
+
+        for (0..rollResults.?.items.len) |i| {
             // Check for pairs
             // Results are considered pairs if the value matches, regardless of the number of sides of the dice.
-            const result = rollResults.items[i];
+            const result = rollResults.?.items[i];
             if (seen.get(result.baseNum)) |cnt| {
                 try seen.put(result.baseNum, cnt + 1);
             } else {

@@ -8,6 +8,7 @@ const RollResult = @import("rollresult.zig").RollResult;
 pub const BasicDie = struct {
     name: [:0]const u8,
     sides: u16,
+    nextResult: u16 = 0,
     pos: rl.Vector2,
     hovered: bool,
     selected: bool,
@@ -15,10 +16,16 @@ pub const BasicDie = struct {
     index: usize,
     breakChance: u7,
     broken: bool,
+    tooltip: [:0]const u8,
 
     pub fn getSides(ptr: *anyopaque) anyerror!u16 {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         return self.sides;
+    }
+
+    pub fn getNextResult(ptr: *anyopaque) anyerror!u16 {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        return self.nextResult;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
@@ -51,6 +58,16 @@ pub const BasicDie = struct {
         self.index = newIndex;
     }
 
+    pub fn getTooltip(ptr: *anyopaque) anyerror![:0]const u8 {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        return self.tooltip;
+    }
+
+    pub fn setTooltip(ptr: *anyopaque, newTooltip: *const [:0]const u8) anyerror!void {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        self.tooltip = newTooltip.*;
+    }
+
     pub fn getBroken(ptr: *anyopaque) anyerror!bool {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         return self.broken;
@@ -58,9 +75,9 @@ pub const BasicDie = struct {
 
     pub fn roll(ptr: *anyopaque, state: *s.State, prevRollResult: *const std.ArrayList(RollResult)) anyerror!RollResult {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
-        const result = state.rand.intRangeAtMost(u16, 1, self.sides);
+        const result = self.nextResult;
         std.debug.print("Roll result {d}/{d}\n", .{ result, self.sides });
-        var curTotal: u16 = 0;
+        var curTotal: u32 = 0;
         if (prevRollResult.items.len > 0) {
             curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
         }
@@ -71,6 +88,10 @@ pub const BasicDie = struct {
             broken = self.breakChance <= broke;
             self.broken = broken;
         }
+
+        self.nextResult = 0;
+        const tooltip = "";
+        self.tooltip = tooltip;
 
         return .{
             .num = result + curTotal,
@@ -89,6 +110,11 @@ pub const BasicDie = struct {
         const dice = state.player.dice;
         var currentlySelectedDice: u8 = 0;
         const numDice = dice.?.items.len;
+
+        if (self.nextResult == 0) {
+            std.debug.print("sides: {d}\n", .{self.sides});
+            self.nextResult = state.rand.intRangeAtMost(u16, 1, self.sides);
+        }
 
         if (dice == null) {
             // This should be impossible.
@@ -135,16 +161,24 @@ pub const BasicDie = struct {
 
         if (hover) {
             var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
-            _ = std.fmt.bufPrintZ(
-                &buffer,
-                "{s}",
-                .{self.name},
-            ) catch "";
+            if (self.tooltip.len > 0) {
+                _ = std.fmt.bufPrintZ(
+                    &buffer,
+                    "{s}\n{s}",
+                    .{ self.name, self.tooltip },
+                ) catch "";
+            } else {
+                _ = std.fmt.bufPrintZ(
+                    &buffer,
+                    "{s}",
+                    .{self.name},
+                ) catch "";
+            }
 
             rl.drawRectangle(
                 @as(i32, @intFromFloat(mousepos.x)),
                 @as(i32, @intFromFloat(mousepos.y)) - 100,
-                100,
+                150,
                 70,
                 rl.getColor(0x0000D0),
             );
@@ -216,6 +250,7 @@ pub const BasicDie = struct {
             self.texture,
             self.index,
             self.breakChance,
+            self.tooltip,
             allocator,
         );
     }

@@ -10,7 +10,7 @@ pub const Rune = struct {
     pos: rl.Vector2,
     getNameFn: *const fn (ptr: *anyopaque) anyerror![:0]const u8,
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
-    handleFn: *const fn (ptr: *anyopaque, state: *s.State, rollResults: *std.ArrayList(RollResult)) anyerror!void,
+    handleFn: *const fn (ptr: *anyopaque, state: *s.State, rollResults: ?*std.ArrayList(RollResult)) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
     pub fn getName(self: *@This()) anyerror![:0]const u8 {
@@ -21,7 +21,7 @@ pub const Rune = struct {
         return self.getPosFn(self.ptr);
     }
 
-    pub fn handle(self: *@This(), state: *s.State, rollResults: *std.ArrayList(RollResult)) anyerror!void {
+    pub fn handle(self: *@This(), state: *s.State, rollResults: ?*std.ArrayList(RollResult)) anyerror!void {
         return self.handleFn(self.ptr, state, rollResults);
     }
 
@@ -52,7 +52,7 @@ pub const Rune = struct {
                 return ptr_info.pointer.child.getPos(self);
             }
 
-            pub fn handle(pointer: *anyopaque, state: *s.State, rollResults: *std.ArrayList(RollResult)) anyerror!void {
+            pub fn handle(pointer: *anyopaque, state: *s.State, rollResults: ?*std.ArrayList(RollResult)) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");

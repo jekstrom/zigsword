@@ -47,7 +47,7 @@ pub const Player = struct {
                 try rollResults.append(rollResult);
             }
         }
-        var result: u16 = 0;
+        var result: u32 = 0;
         if (rollResults.items.len > 0) {
             result = rollResults.items[rollResults.items.len - 1].num;
         }
@@ -174,6 +174,15 @@ pub const Player = struct {
 
         if (self.dice == null and (self.altarHistory == null or self.altarHistory.?.items.len == 0)) {
             return;
+        }
+
+        if (self.runes != null and self.runes.?.items.len > 0) {
+            // Handle runes
+            const runesList: []*Rune = self.runes.?.items;
+            for (0..runesList.len) |i| {
+                var r = runesList[i];
+                try r.handle(state, null);
+            }
         }
 
         if (self.messages == null) {
