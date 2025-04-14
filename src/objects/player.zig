@@ -46,23 +46,39 @@ pub const Player = struct {
                 const rollResult = try die.roll(state, &rollResults);
                 try rollResults.append(rollResult);
                 try die.setSelected(false);
+                if (rollResults.items.len == 1) {
+                    // check for dawn rune
+                    if (self.runes != null and self.runes.?.items.len > 0) {
+                        const runesList: []*Rune = self.runes.?.items;
+                        for (0..runesList.len) |u| {
+                            var r = runesList[u];
+                            if (std.mem.eql(u8, try r.getName(), "Dawn")) {
+                                try r.handle(state, &rollResults);
+                                std.debug.print("Rune {s} activated for first die \n", .{try r.getName()});
+                            }
+                        }
+                    }
+                }
             }
         }
-        var result: u32 = 0;
-        if (rollResults.items.len > 0) {
-            result = rollResults.items[rollResults.items.len - 1].num;
-        }
-        std.debug.print("Final Roll result: {d} from {d} dice\n", .{ result, rollResults.items.len });
 
         if (self.runes != null and self.runes.?.items.len > 0) {
             // Handle runes
             const runesList: []*Rune = self.runes.?.items;
             for (0..runesList.len) |i| {
                 var r = runesList[i];
-                try r.handle(state, &rollResults);
-                std.debug.print("Rune {s} activated \n", .{try r.getName()});
+                if (!std.mem.eql(u8, try r.getName(), "Dawn")) {
+                    try r.handle(state, &rollResults);
+                    std.debug.print("Rune {s} activated \n", .{try r.getName()});
+                }
             }
         }
+
+        var result: u32 = 0;
+        if (rollResults.items.len > 0) {
+            result = rollResults.items[rollResults.items.len - 1].num;
+        }
+        std.debug.print("Final Roll result: {d} from {d} dice\n", .{ result, rollResults.items.len });
 
         // remove selected dice
         var i = self.dice.?.items.len;

@@ -10,6 +10,7 @@ const shop = @import("../objects/shopitem.zig");
 const BasicDie = @import("../dice/basic.zig").BasicDie;
 const KinRune = @import("../runes/kin.zig").KinRune;
 const FateRune = @import("../runes/fate.zig").FateRune;
+const DawnRune = @import("../runes/dawn.zig").DawnRune;
 const Rune = @import("../runes/rune.zig").Rune;
 
 pub const MapNode = struct {
@@ -66,6 +67,7 @@ pub const MapNode = struct {
                 .y = state.grid.topUI() + 75.0,
             };
             const kr = try kinRune.rune(&state.allocator);
+
             var fateRune: *FateRune = try state.allocator.create(FateRune);
             fateRune.name = "Fate";
             fateRune.pos = .{
@@ -74,10 +76,19 @@ pub const MapNode = struct {
             };
             const fr = try fateRune.rune(&state.allocator);
 
+            var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
+            dawnRune.name = "Dawn";
+            dawnRune.pos = .{
+                .x = state.grid.getWidth() - 225.0,
+                .y = state.grid.topUI() + 75.0,
+            };
+            const dr = try dawnRune.rune(&state.allocator);
+
             var runes = MonsterRunes.init(state.allocator);
             // TOOD: Determine runes randomly
             try runes.append(kr);
             try runes.append(fr);
+            try runes.append(dr);
 
             std.debug.print("Adding Boss to node {s}\n", .{self.name});
             try self.addMonster(.{
