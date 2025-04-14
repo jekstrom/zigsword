@@ -14,7 +14,7 @@ pub const Monster = struct {
     damageRange: u8,
     dying: bool,
     gold: u8,
-    rune: ?*Rune,
+    runes: ?std.ArrayList(*Rune),
     messages: ?std.ArrayList([:0]const u8),
     monsterMsgDecay: u8 = 255,
 

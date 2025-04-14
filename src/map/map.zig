@@ -9,6 +9,8 @@ const mob = @import("../objects/monster.zig");
 const shop = @import("../objects/shopitem.zig");
 const BasicDie = @import("../dice/basic.zig").BasicDie;
 const KinRune = @import("../runes/kin.zig").KinRune;
+const FateRune = @import("../runes/fate.zig").FateRune;
+const Rune = @import("../runes/rune.zig").Rune;
 
 pub const MapNode = struct {
     name: [:0]u8,
@@ -34,6 +36,7 @@ pub const MapNode = struct {
     pub fn init(self: *@This(), state: *s.State) !void {
         const nodeContents = state.rand.intRangeAtMost(u4, 0, 15);
         const MonsterMessages = std.ArrayList([:0]const u8);
+        const MonsterRunes = std.ArrayList(*Rune);
 
         //TODO: Better randomization for map node contents
 
@@ -59,10 +62,22 @@ pub const MapNode = struct {
             var kinRune: *KinRune = try state.allocator.create(KinRune);
             kinRune.name = "Kin";
             kinRune.pos = .{
-                .x = state.grid.getWidth() - 250.0,
-                .y = state.grid.topUI() + 100.0,
+                .x = state.grid.getWidth() - 305.0,
+                .y = state.grid.topUI() + 75.0,
             };
             const kr = try kinRune.rune(&state.allocator);
+            var fateRune: *FateRune = try state.allocator.create(FateRune);
+            fateRune.name = "Fate";
+            fateRune.pos = .{
+                .x = state.grid.getWidth() - 225.0,
+                .y = state.grid.topUI() + 75.0,
+            };
+            const fr = try fateRune.rune(&state.allocator);
+
+            var runes = MonsterRunes.init(state.allocator);
+            // TOOD: Determine runes randomly
+            try runes.append(kr);
+            try runes.append(fr);
 
             std.debug.print("Adding Boss to node {s}\n", .{self.name});
             try self.addMonster(.{
@@ -75,7 +90,7 @@ pub const MapNode = struct {
                 .damageRange = 35,
                 .dying = false,
                 .gold = state.rand.intRangeAtMost(u8, 10, 25),
-                .rune = kr,
+                .runes = runes,
                 .messages = MonsterMessages.init(state.allocator),
             });
         }
@@ -93,7 +108,7 @@ pub const MapNode = struct {
                     .damageRange = 25,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
-                    .rune = null,
+                    .runes = null,
                     .messages = MonsterMessages.init(state.allocator),
                 });
             } else if (nodeContents > 4 and nodeContents <= 8) {
@@ -108,7 +123,7 @@ pub const MapNode = struct {
                     .damageRange = 35,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
-                    .rune = null,
+                    .runes = null,
                     .messages = MonsterMessages.init(state.allocator),
                 });
             } else if (nodeContents > 8 and nodeContents <= 15) {
@@ -131,7 +146,7 @@ pub const MapNode = struct {
         if (self.type == .SHOP) {
             // TODO: Generate shop items
             var d6 = try state.allocator.create(BasicDie);
-            d6.name = "d6";
+            d6.name = "Basic d6";
             d6.sides = 6;
             d6.texture = state.textureMap.get(.D6);
             d6.hovered = false;
@@ -139,12 +154,13 @@ pub const MapNode = struct {
             d6.broken = false;
             d6.breakChance = 0;
             d6.nextResult = 0;
+            d6.tooltip = "";
             d6.index = 0;
             d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
             const d6die = try d6.die(&state.allocator);
 
             var d4 = try state.allocator.create(BasicDie);
-            d4.name = "d4";
+            d4.name = "Basic d4";
             d4.sides = 4;
             d4.texture = state.textureMap.get(.D4);
             d4.hovered = false;
@@ -152,12 +168,13 @@ pub const MapNode = struct {
             d4.broken = false;
             d4.breakChance = 0;
             d4.nextResult = 0;
+            d4.tooltip = "";
             d4.index = 0;
             d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
             const d4die = try d4.die(&state.allocator);
 
             try self.addShopItem(.{
-                .name = "d4",
+                .name = "Basic d6",
                 .die = d6die,
                 .price = 4,
                 .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
@@ -228,15 +245,9 @@ pub const MapNode = struct {
         if (self.monsters != null) {
             for (0..self.monsters.?.items.len) |i| {
                 var monster = &self.monsters.?.items[i];
-                const gold = monster.gold;
                 const hp = monster.health;
                 if (hp <= 0 and !monster.dying) {
                     monster.dying = true;
-                    state.player.gold += gold;
-                    if (monster.rune) |rune| {
-                        // TODO: Monster should have multiple runes, let the player choose one
-                        try state.player.runes.?.append(rune);
-                    }
                 }
             }
         }

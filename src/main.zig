@@ -394,14 +394,14 @@ pub fn main() anyerror!void {
     }
 
     // TEST RUNES
-    var fateRune: *FateRune = try allocator.create(FateRune);
-    fateRune.name = "Fate";
-    fateRune.pos = .{
-        .x = state.grid.getWidth() - 250.0,
-        .y = state.grid.topUI() + 100.0,
-    };
-    const kr = try fateRune.rune(&allocator);
-    try state.player.runes.?.append(kr);
+    // var fateRune: *FateRune = try allocator.create(FateRune);
+    // fateRune.name = "Fate";
+    // fateRune.pos = .{
+    //     .x = state.grid.getWidth() - 250.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const kr = try fateRune.rune(&allocator);
+    // try state.player.runes.?.append(kr);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------

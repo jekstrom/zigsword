@@ -25,6 +25,8 @@ pub const State = struct {
     allocator: std.mem.Allocator,
     currentMap: u8,
     currentNode: u8,
+    maxSelectedRunes: u8 = 1,
+    currentSelectedRuneCount: u8 = 0,
     map: ?m.Map,
     rand: std.Random,
     // a static collection of numbers, one per cell, to use as consistent values between maps for each game

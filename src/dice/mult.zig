@@ -44,6 +44,11 @@ pub const MultDie = struct {
         return self.selected;
     }
 
+    pub fn setSelected(ptr: *anyopaque, val: bool) anyerror!void {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        self.selected = val;
+    }
+
     pub fn getTexture(ptr: *anyopaque) anyerror!?rl.Texture {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.texture;
@@ -64,9 +69,9 @@ pub const MultDie = struct {
         return self.tooltip;
     }
 
-    pub fn setTooltip(ptr: *anyopaque, newTooltip: *const [:0]const u8) anyerror!void {
+    pub fn setTooltip(ptr: *anyopaque, newTooltip: [:0]const u8) anyerror!void {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
-        self.tooltip = newTooltip.*;
+        self.tooltip = newTooltip;
     }
 
     pub fn getBroken(ptr: *anyopaque) anyerror!bool {

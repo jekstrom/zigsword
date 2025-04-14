@@ -45,6 +45,7 @@ pub const Player = struct {
             if (try die.getSelected()) {
                 const rollResult = try die.roll(state, &rollResults);
                 try rollResults.append(rollResult);
+                try die.setSelected(false);
             }
         }
         var result: u32 = 0;

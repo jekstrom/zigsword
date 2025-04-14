@@ -24,11 +24,12 @@ pub const Die = struct {
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHoveredFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getSelectedFn: *const fn (ptr: *anyopaque) anyerror!bool,
+    setSelectedFn: *const fn (ptr: *anyopaque, val: bool) anyerror!void,
     getTextureFn: *const fn (ptr: *anyopaque) anyerror!?rl.Texture,
     getIndexFn: *const fn (ptr: *anyopaque) anyerror!usize,
     setIndexFn: *const fn (ptr: *anyopaque, newIndex: usize) anyerror!void,
     getTooltipFn: *const fn (ptr: *anyopaque) anyerror![:0]const u8,
-    setTooltipFn: *const fn (ptr: *anyopaque, *const [:0]const u8) anyerror!void,
+    setTooltipFn: *const fn (ptr: *anyopaque, [:0]const u8) anyerror!void,
     rollFn: *const fn (ptr: *anyopaque, state: *s.State, prevRollResults: *const std.ArrayList(RollResult)) anyerror!RollResult,
     updateFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
@@ -53,6 +54,10 @@ pub const Die = struct {
         return self.getSelectedFn(self.ptr);
     }
 
+    pub fn setSelected(self: *@This(), val: bool) anyerror!void {
+        return self.setSelectedFn(self.ptr, val);
+    }
+
     pub fn getTexture(self: *@This()) anyerror!?rl.Texture {
         return self.getTextureFn(self.ptr);
     }
@@ -65,7 +70,7 @@ pub const Die = struct {
         return self.getTooltipFn(self.ptr);
     }
 
-    pub fn setTooltip(self: *@This(), newTooltip: *const [:0]const u8) anyerror!void {
+    pub fn setTooltip(self: *@This(), newTooltip: [:0]const u8) anyerror!void {
         return self.setTooltipFn(self.ptr, newTooltip);
     }
 
@@ -162,6 +167,13 @@ pub const Die = struct {
                 return @call(.always_inline, ptr_info.pointer.child.getSelected, .{self});
             }
 
+            pub fn setSelected(pointer: *anyopaque, val: bool) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.setSelected, .{ self, val });
+            }
+
             pub fn getTexture(pointer: *anyopaque) anyerror!?rl.Texture {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -183,7 +195,7 @@ pub const Die = struct {
                 return @call(.always_inline, ptr_info.pointer.child.getTooltip, .{self});
             }
 
-            pub fn setTooltip(pointer: *anyopaque, newTooltip: *const [:0]const u8) anyerror!void {
+            pub fn setTooltip(pointer: *anyopaque, newTooltip: [:0]const u8) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
@@ -221,6 +233,7 @@ pub const Die = struct {
         sobj.getPosFn = gen.getPos;
         sobj.getHoveredFn = gen.getHovered;
         sobj.getSelectedFn = gen.getSelected;
+        sobj.setSelectedFn = gen.setSelected;
         sobj.getTextureFn = gen.getTexture;
         sobj.getIndexFn = gen.getIndex;
         sobj.getTooltipFn = gen.getTooltip;

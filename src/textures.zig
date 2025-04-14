@@ -64,6 +64,10 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
 
     const shopCard = try loadTexture("resources/shop_card.png");
 
+    const fateRune = try loadTexture("resources/fate_rune.png");
+    const kinRune = try loadTexture("resources/kin_rune.png");
+    const dawnRune = try loadTexture("resources/dawn_rune.png");
+
     const d4 = try loadTexture("resources/pyramid.png");
 
     const d6 = try loadTexture("resources/d6.png");
@@ -89,4 +93,7 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     try map.put(.D4, d4);
     try map.put(.D6, d6);
     try map.put(.SHOPCARD, shopCard);
+    try map.put(.FATERUNE, fateRune);
+    try map.put(.KINRUNE, kinRune);
+    try map.put(.DAWNRUNE, dawnRune);
 }

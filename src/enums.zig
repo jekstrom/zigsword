@@ -18,6 +18,9 @@ pub const TextureType = enum(u8) {
     REDGOBLIN,
     BOSS,
     SHOPCARD,
+    FATERUNE,
+    KINRUNE,
+    DAWNRUNE,
     D4,
     D6,
 };
