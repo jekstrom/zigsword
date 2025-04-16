@@ -180,6 +180,7 @@ pub const FateRune = struct {
                 .{nextResult},
             ) catch "";
 
+            std.debug.print("Set tooltip\n", .{});
             try d.setTooltip(buffer);
         }
     }

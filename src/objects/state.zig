@@ -81,7 +81,7 @@ pub const State = struct {
             4,
         );
 
-        if (nodeType == .SHOP or nodeType == .BOSS) {
+        if (nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
             numWalkingNodes = 1;
         }
 
@@ -155,6 +155,20 @@ pub const State = struct {
                 };
                 try dungeonNode.init(self);
                 try newMap.addMapNode(dungeonNode);
+            } else if (nodeType == .ASCENDBOSS) {
+                var ascendBossNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.DUNGEONGROUND),
+                    .background = self.textureMap.get(.ASCENDBOSSBACKGROUND),
+                    .monsters = MonsterList.init(self.allocator),
+                    .monstersEntered = false,
+                    .event = null,
+                    .shopItems = null,
+                    .stateMachine = null,
+                };
+                try ascendBossNode.init(self);
+                try newMap.addMapNode(ascendBossNode);
             } else if (nodeType == .SHOP) {
                 var shopNode: m.MapNode = .{
                     .name = buffer,
@@ -165,6 +179,20 @@ pub const State = struct {
                     .monsters = null,
                     .event = null,
                     .shopItems = ShopItems.init(self.allocator),
+                    .stateMachine = null,
+                };
+                try shopNode.init(self);
+                try newMap.addMapNode(shopNode);
+            } else if (nodeType == .ASCEND) {
+                var shopNode: m.MapNode = .{
+                    .name = buffer,
+                    .type = nodeType,
+                    .texture = self.textureMap.get(.DUNGEONGROUND),
+                    .background = self.textureMap.get(.ASCEND1BACKGROUND),
+                    .monstersEntered = false,
+                    .monsters = null,
+                    .event = null,
+                    .shopItems = null,
                     .stateMachine = null,
                 };
                 try shopNode.init(self);

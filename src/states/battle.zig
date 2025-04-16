@@ -168,6 +168,7 @@ pub const BattleState = struct {
                         .x = state.grid.getWidth() - 225.0 + @as(f32, @floatFromInt(i * 50)),
                         .y = state.grid.topUI() + 75.0,
                     });
+                    state.currentSelectedRuneCount = 0;
                     try state.player.runes.?.append(rune);
                 }
             }

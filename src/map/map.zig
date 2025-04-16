@@ -3,6 +3,7 @@ const std = @import("std");
 const s = @import("../objects/state.zig");
 const g = @import("../objects/grid.zig");
 const altar = @import("../events/altar.zig");
+const AscendWalkingEvent = @import("../events/ascend.zig").AscendWalkingEvent;
 const Event = @import("../events/event.zig").Event;
 const treasure = @import("../events/treasure.zig");
 const mob = @import("../objects/monster.zig");
@@ -59,6 +60,24 @@ pub const MapNode = struct {
             }
         }
 
+        if (self.type == .ASCEND) {
+            // If the player has three runes, they can ascend
+            // if they choose to ascend, they fight a final boss
+            // once the boss is defeated, the game ends and they unlock another sword to play as
+            std.debug.print("Adding Ascend event to node {s}\n", .{self.name});
+            const groundCenter = state.grid.getGroundCenterPos();
+            var walkingEvent = try state.allocator.create(AscendWalkingEvent);
+            walkingEvent.handled = false;
+            walkingEvent.name = "Ascend";
+            walkingEvent.eventType = .ASCEND;
+            walkingEvent.pos = .{
+                .x = groundCenter.x + 100,
+                .y = groundCenter.y - 110,
+            };
+            const event = try walkingEvent.event(&state.allocator);
+            self.event = event;
+        }
+
         if (self.type == .BOSS) {
             var kinRune: *KinRune = try state.allocator.create(KinRune);
             kinRune.name = "Kin";
@@ -101,6 +120,53 @@ pub const MapNode = struct {
                 .damageRange = 35,
                 .dying = false,
                 .gold = state.rand.intRangeAtMost(u8, 10, 25),
+                .runes = runes,
+                .messages = MonsterMessages.init(state.allocator),
+            });
+        }
+
+        if (self.type == .ASCENDBOSS) {
+            var kinRune: *KinRune = try state.allocator.create(KinRune);
+            kinRune.name = "Kin";
+            kinRune.pos = .{
+                .x = state.grid.getWidth() - 305.0,
+                .y = state.grid.topUI() + 75.0,
+            };
+            const kr = try kinRune.rune(&state.allocator);
+
+            var fateRune: *FateRune = try state.allocator.create(FateRune);
+            fateRune.name = "Fate";
+            fateRune.pos = .{
+                .x = state.grid.getWidth() - 225.0,
+                .y = state.grid.topUI() + 75.0,
+            };
+            const fr = try fateRune.rune(&state.allocator);
+
+            var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
+            dawnRune.name = "Dawn";
+            dawnRune.pos = .{
+                .x = state.grid.getWidth() - 225.0,
+                .y = state.grid.topUI() + 75.0,
+            };
+            const dr = try dawnRune.rune(&state.allocator);
+
+            var runes = MonsterRunes.init(state.allocator);
+            // TOOD: Determine runes randomly
+            try runes.append(kr);
+            try runes.append(fr);
+            try runes.append(dr);
+
+            std.debug.print("Adding Ascend Boss to node {s}\n", .{self.name});
+            try self.addMonster(.{
+                .name = "Ascend Boss",
+                .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
+                .nameKnown = false,
+                .speed = 0.15,
+                .health = 100,
+                .maxHealth = 100,
+                .damageRange = 35,
+                .dying = false,
+                .gold = state.rand.intRangeAtMost(u8, 10, 55),
                 .runes = runes,
                 .messages = MonsterMessages.init(state.allocator),
             });
@@ -263,6 +329,8 @@ pub const MapNode = struct {
             }
         }
 
+        if (self.type == .ASCEND) {}
+
         if (self.type == .SHOP and self.shopItems != null) {
             const mousepos = rl.getMousePosition();
             for (0..self.shopItems.?.items.len) |i| {
@@ -343,8 +411,8 @@ pub const MapNode = struct {
                 .{
                     .x = 0,
                     .y = 0,
-                    .width = 1024,
-                    .height = 768,
+                    .width = 2048,
+                    .height = 1400,
                 },
                 .{
                     .x = 0,
@@ -571,4 +639,6 @@ pub const MapNodeType = enum(u8) {
     DUNGEON,
     SHOP,
     BOSS,
+    ASCEND,
+    ASCENDBOSS,
 };

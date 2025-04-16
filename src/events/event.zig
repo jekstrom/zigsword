@@ -114,5 +114,6 @@ pub const Event = struct {
 
 pub const EventType = enum(u8) {
     ALTAR,
+    ASCEND,
     CHEST,
 };

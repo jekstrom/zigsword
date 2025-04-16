@@ -98,7 +98,8 @@ pub const MultDie = struct {
         }
 
         self.nextResult = 0;
-        self.tooltip = "";
+        const tooltip = "";
+        self.tooltip = tooltip;
 
         return .{
             .num = result * curTotal,

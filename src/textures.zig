@@ -35,6 +35,8 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     const dungeonBackground = try loadDungeonBackgroundTextures();
 
     const shopBackground = try loadTexture("resources/shop.png");
+    const ascendBackground = try loadTexture("resources/ascend1.png");
+    const ascendBossBackground = try loadTexture("resources/ascend_boss_bg.png");
 
     const swordIcon = try loadTexture("resources/sword_icon.png");
 
@@ -61,6 +63,7 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     const redGoblin = try loadTexture("resources/red_goblin.png");
 
     const boss = try loadTexture("resources/boss.png");
+    const ascendBoss = try loadTexture("resources/ascend_boss1.png");
 
     const shopCard = try loadTexture("resources/shop_card.png");
 
@@ -84,12 +87,15 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     try map.put(.OUTSIDEBACKGROUND, background);
     try map.put(.DUNGEONBACKGROUND, dungeonBackground);
     try map.put(.SHOPBACKGROUND, shopBackground);
+    try map.put(.ASCEND1BACKGROUND, ascendBackground);
+    try map.put(.ASCENDBOSSBACKGROUND, ascendBossBackground);
     try map.put(.GOODALTAR, goodAltar);
     try map.put(.EVILALTAR, evilAltar);
     try map.put(.TREASURECHEST, treasureChest);
     try map.put(.GREENGOBLIN, greenGoblin);
     try map.put(.REDGOBLIN, redGoblin);
     try map.put(.BOSS, boss);
+    try map.put(.ASCENDBOSS, ascendBoss);
     try map.put(.D4, d4);
     try map.put(.D6, d6);
     try map.put(.SHOPCARD, shopCard);

@@ -12,6 +12,8 @@ const MultDie = @import("dice/mult.zig").MultDie;
 const Die = @import("die.zig").Die;
 const Rune = @import("runes/rune.zig").Rune;
 const DawnRune = @import("runes/dawn.zig").DawnRune;
+const FateRune = @import("runes/fate.zig").FateRune;
+const KinRune = @import("runes/kin.zig").KinRune;
 const textures = @import("textures.zig");
 const SMState = @import("states/smState.zig").SMState;
 
@@ -305,6 +307,7 @@ pub fn main() anyerror!void {
 
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
+    try state.generateNextMap("Ascend", .ASCEND);
     try state.generateNextMap("Boss", .BOSS);
     try state.generateNextMap("Dungeon", .DUNGEON);
     try state.generateNextMap("Shop", .SHOP);
@@ -394,14 +397,32 @@ pub fn main() anyerror!void {
     }
 
     // TEST RUNES
-    // var dawnRune: *DawnRune = try allocator.create(DawnRune);
-    // dawnRune.name = "Dawn";
-    // dawnRune.pos = .{
-    //     .x = state.grid.getWidth() - 250.0,
-    //     .y = state.grid.topUI() + 75.0,
-    // };
-    // const kr = try dawnRune.rune(&allocator);
-    // try state.player.runes.?.append(kr);
+    var dawnRune: *DawnRune = try allocator.create(DawnRune);
+    dawnRune.name = "Dawn";
+    dawnRune.pos = .{
+        .x = state.grid.getWidth() - 250.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const dr = try dawnRune.rune(&allocator);
+    try state.player.runes.?.append(dr);
+
+    var kinRune: *KinRune = try allocator.create(KinRune);
+    kinRune.name = "Kin";
+    kinRune.pos = .{
+        .x = state.grid.getWidth() - 220.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const kr = try kinRune.rune(&allocator);
+    try state.player.runes.?.append(kr);
+
+    var fateRune: *FateRune = try allocator.create(FateRune);
+    fateRune.name = "Fate";
+    fateRune.pos = .{
+        .x = state.grid.getWidth() - 190.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const fr = try fateRune.rune(&allocator);
+    try state.player.runes.?.append(fr);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------

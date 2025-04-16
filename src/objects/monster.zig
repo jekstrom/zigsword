@@ -187,6 +187,29 @@ pub const Monster = struct {
             }
         }
 
+        if (std.mem.eql(u8, self.name, "Ascend Boss")) {
+            if (state.textureMap.get(.ASCENDBOSS)) |texture| {
+                rl.drawTexturePro(
+                    texture,
+                    .{
+                        .x = 0,
+                        .y = 0,
+                        .width = textureWidth,
+                        .height = textureHeight,
+                    },
+                    .{
+                        .height = 256,
+                        .width = 256,
+                        .x = self.pos.x,
+                        .y = self.pos.y,
+                    },
+                    .{ .x = 0, .y = 0 },
+                    0.0,
+                    .magenta,
+                );
+            }
+        }
+
         if (self.health > 0) {
             // Draw healthbar, normalized by max health = 100%
             const healthPerc: f32 = rl.math.normalize(@as(f32, @floatFromInt(self.health)), 0.0, @as(

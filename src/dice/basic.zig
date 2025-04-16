@@ -4,6 +4,7 @@ const enums = @import("../enums.zig");
 const s = @import("../objects/state.zig");
 const Die = @import("../die.zig").Die;
 const RollResult = @import("rollresult.zig").RollResult;
+const concatStrings = @import("../stringutils.zig").concatStrings;
 
 pub const BasicDie = struct {
     name: [:0]const u8,
@@ -70,6 +71,8 @@ pub const BasicDie = struct {
 
     pub fn setTooltip(ptr: *anyopaque, newTooltip: [:0]const u8) anyerror!void {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        std.debug.print("Set tooltip ", .{});
+        std.debug.print("{s} on die {s}\n", .{ self.name, newTooltip });
         self.tooltip = newTooltip;
     }
 
@@ -165,19 +168,23 @@ pub const BasicDie = struct {
         }
 
         if (hover) {
-            var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
+            var string = std.ArrayList(u8).init(state.allocator);
+            defer string.deinit();
             if (self.tooltip.len > 0) {
-                _ = std.fmt.bufPrintZ(
-                    &buffer,
-                    "{s}\n{s}",
-                    .{ self.name, self.tooltip },
-                ) catch "";
+                const tt = try concatStrings(state.allocator, self.name, self.tooltip);
+                try string.appendSlice(tt);
+                // _ = std.fmt.bufPrintZ(
+                //     &buffer,
+                //     "{s}\n{s}",
+                //     .{ self.name, self.tooltip },
+                // ) catch "";
             } else {
-                _ = std.fmt.bufPrintZ(
-                    &buffer,
-                    "{s}",
-                    .{self.name},
-                ) catch "";
+                try string.appendSlice(self.name);
+                // _ = std.fmt.bufPrintZ(
+                //     &buffer,
+                //     "{s}",
+                //     .{self.name},
+                // ) catch "";
             }
 
             rl.drawRectangle(
@@ -188,8 +195,12 @@ pub const BasicDie = struct {
                 rl.getColor(0x0000D0),
             );
 
+            const sresult = try state.allocator.allocSentinel(u8, string.items.len, 0);
+            defer state.allocator.free(sresult);
+            @memcpy(sresult.ptr[0..string.items.len], string.items.ptr[0..string.items.len]);
+
             rl.drawText(
-                &buffer,
+                sresult,
                 @as(i32, @intFromFloat(mousepos.x)) + 10,
                 @as(i32, @intFromFloat(mousepos.y)) - 90,
                 20,
