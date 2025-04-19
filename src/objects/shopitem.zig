@@ -28,4 +28,10 @@ pub const ShopItem = struct {
         }
         return true;
     }
+
+    pub fn deinit(self: *@This(), state: *s.State) void {
+        if (self.die != null) {
+            state.allocator.destroy(self.die.?);
+        }
+    }
 };

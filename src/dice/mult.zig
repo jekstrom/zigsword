@@ -99,6 +99,9 @@ pub const MultDie = struct {
 
         self.nextResult = 0;
         const tooltip = "";
+        if (self.tooltip.len > 0) {
+            state.allocator.free(self.tooltip);
+        }
         self.tooltip = tooltip;
 
         return .{
@@ -244,6 +247,14 @@ pub const MultDie = struct {
                 0.0,
                 .white,
             );
+        }
+    }
+
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        if (self.tooltip.len > 0) {
+            std.debug.print("*********\nDEINIT DIE TOOLTIP\n\n", .{});
+            state.allocator.free(self.tooltip);
         }
     }
 

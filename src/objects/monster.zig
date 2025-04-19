@@ -34,6 +34,17 @@ pub const Monster = struct {
         return true;
     }
 
+    pub fn deinit(self: *@This()) void {
+        if (self.runes) |runes| {
+            if (runes.items.len > 0) {
+                runes.deinit();
+            }
+        }
+        if (self.messages) |messages| {
+            messages.deinit();
+        }
+    }
+
     pub fn attack(self: @This(), state: *s.State) !void {
         const damage = state.rand.intRangeAtMost(u8, 1, self.damageRange);
         std.debug.print("Monster did damage: {d}\n", .{damage});
@@ -46,32 +57,17 @@ pub const Monster = struct {
 
             const playerMessages = player.messages;
             if (playerMessages != null) {
-                var floatLog: f16 = 1.0;
-                if (damage > 0) {
-                    floatLog = @floor(@log10(@as(f16, @floatFromInt(damage))) + 1.0);
-                }
-                const digits: u64 = @as(u64, @intFromFloat(floatLog));
-                const buffer = try state.allocator.allocSentinel(
-                    u8,
-                    digits,
-                    0,
-                );
-
-                _ = std.fmt.bufPrint(
-                    buffer,
-                    "{d}",
-                    .{damage},
-                ) catch "";
-                try player.messages.?.append(buffer);
+                const st = try std.fmt.allocPrintZ(state.allocator, "{d}", .{damage});
+                try player.messages.?.append(st);
             }
         }
     }
 
     pub fn update(self: *@This(), state: *s.State) void {
-        _ = state;
         const monsterMessageDisplayed = self.displayMessages(
             self.monsterMsgDecay,
             rl.getFrameTime() * @as(f32, @floatFromInt(self.monsterMsgDecay)),
+            state,
         );
         if (self.monsterMsgDecay == 0) {
             self.monsterMsgDecay = 255;
@@ -88,7 +84,7 @@ pub const Monster = struct {
         }
     }
 
-    pub fn displayMessages(self: *@This(), decay: u8, dt: f32) bool {
+    pub fn displayMessages(self: *@This(), decay: u8, dt: f32, state: *s.State) bool {
         if (self.messages == null or self.messages.?.items.len == 0) {
             return false;
         }
@@ -105,7 +101,10 @@ pub const Monster = struct {
             return true;
         }
         if (decay == 0) {
-            _ = self.messages.?.pop();
+            const old = self.messages.?.pop();
+            if (old != null) {
+                state.allocator.free(old.?);
+            }
             return false;
         }
         return false;

@@ -13,14 +13,18 @@ pub const StateMachine = struct {
         if (self.state == null or self.state.?.smType != newState.smType) {
             if (self.state != null) {
                 try self.state.?.exit(state);
+                try self.clearState();
             }
             self.state = newState;
-            // try self.state.update(state);
             try self.state.?.enter(state);
+        } else {
+            // Did not transition to new state, so we should clean it up.
+            self.allocator.destroy(newState);
         }
     }
 
     pub fn clearState(self: *@This()) anyerror!void {
+        std.debug.print("CLEAR STATE {}\n", .{self.state.?.smType});
         self.allocator.destroy(self.state.?);
         self.state = null;
     }

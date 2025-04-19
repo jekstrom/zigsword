@@ -32,6 +32,7 @@ pub const Die = struct {
     setTooltipFn: *const fn (ptr: *anyopaque, [:0]const u8) anyerror!void,
     rollFn: *const fn (ptr: *anyopaque, state: *s.State, prevRollResults: *const std.ArrayList(RollResult)) anyerror!RollResult,
     updateFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
+    deinitFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
     pub fn getSides(self: *@This()) anyerror!u16 {
@@ -94,6 +95,10 @@ pub const Die = struct {
         return self.drawFn(self.ptr, state);
     }
 
+    pub fn deinit(self: *@This(), state: *s.State) anyerror!void {
+        return self.deinitFn(self.ptr, state);
+    }
+
     pub fn init(
         ptr: anytype,
         name: [:0]const u8,
@@ -116,6 +121,13 @@ pub const Die = struct {
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
                 return ptr_info.pointer.child.update(self, state);
+            }
+
+            pub fn deinit(pointer: *anyopaque, state: *s.State) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return ptr_info.pointer.child.deinit(self, state);
             }
 
             pub fn draw(pointer: *anyopaque, state: *s.State) anyerror!void {
@@ -241,6 +253,7 @@ pub const Die = struct {
         sobj.getBrokenFn = gen.getBroken;
         sobj.setIndexFn = gen.setIndex;
         sobj.updateFn = gen.update;
+        sobj.deinitFn = gen.deinit;
         sobj.drawFn = gen.draw;
         sobj.rollFn = gen.roll;
         return sobj;

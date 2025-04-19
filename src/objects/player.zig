@@ -27,6 +27,29 @@ pub const Player = struct {
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
     runes: ?std.ArrayList(*Rune),
 
+    pub fn deinit(self: *@This(), state: *s.State) !void {
+        std.debug.print("*****PLAYER DEINIT\n\n", .{});
+        if (self.altarHistory) |altarHistory| {
+            altarHistory.deinit();
+        }
+        if (self.dice) |dice| {
+            for (0..dice.items.len) |i| {
+                try dice.items[i].deinit(state);
+                state.allocator.destroy(dice.items[i]);
+            }
+            dice.deinit();
+        }
+        if (self.messages) |msgs| {
+            for (0..msgs.items.len) |i| {
+                state.allocator.free(msgs.items[i]);
+            }
+            msgs.deinit();
+        }
+        if (self.runes) |runes| {
+            runes.deinit();
+        }
+    }
+
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) anyerror!void {
         // self.durability -= 20;
 
@@ -90,6 +113,7 @@ pub const Player = struct {
             i -= 1;
             if (try self.dice.?.items[i].getSelected() and try self.dice.?.items[i].getBroken()) {
                 removedCount += 1;
+                try self.dice.?.items[i].deinit(state);
                 _ = dice.?.orderedRemove(i);
             } else {
                 try newDice.insert(0, self.dice.?.items[i]);
@@ -114,23 +138,8 @@ pub const Player = struct {
             monster.health -= @as(u32, @intCast(damageScaled));
         }
         if (monster.messages != null) {
-            var floatLog: f16 = 1.0;
-            if (damageScaled > 0) {
-                floatLog = @floor(@log10(@as(f16, @floatFromInt(damageScaled))) + 1.0);
-            }
-            const digits: u64 = @as(u64, @intFromFloat(floatLog));
-            const buffer = try state.allocator.allocSentinel(
-                u8,
-                digits,
-                0,
-            );
-
-            _ = std.fmt.bufPrint(
-                buffer,
-                "{d}",
-                .{damageScaled},
-            ) catch "";
-            try monster.messages.?.append(buffer);
+            const st = try std.fmt.allocPrintZ(state.allocator, "{d}", .{damageScaled});
+            try monster.messages.?.append(st);
         }
     }
 
@@ -210,6 +219,7 @@ pub const Player = struct {
         const playerMessageDisplayed = self.displayMessages(
             self.playerMsgDecay,
             rl.getFrameTime() * @as(f32, @floatFromInt(self.playerMsgDecay)),
+            state,
         );
         if (self.playerMsgDecay == 0) {
             self.playerMsgDecay = 255;
@@ -257,7 +267,7 @@ pub const Player = struct {
         }
     }
 
-    pub fn displayMessages(self: *@This(), decay: u8, dt: f32) bool {
+    pub fn displayMessages(self: *@This(), decay: u8, dt: f32, state: *s.State) bool {
         if (self.messages == null or self.messages.?.items.len == 0) {
             return false;
         }
@@ -274,7 +284,10 @@ pub const Player = struct {
             return true;
         }
         if (decay == 0) {
-            _ = self.messages.?.pop();
+            const old = self.messages.?.pop();
+            if (old != null) {
+                state.allocator.free(old.?);
+            }
             return false;
         }
         return false;

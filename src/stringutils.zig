@@ -21,7 +21,6 @@ pub fn concatStrings(allocator: std.mem.Allocator, str1: [:0]const u8, str2: [:0
     const totalContentLen = chars1 + chars2;
 
     const result = try allocator.allocSentinel(u8, totalContentLen, 0);
-    errdefer allocator.free(result);
 
     @memcpy(result.ptr[0..chars1], str1.ptr[0..chars1]);
     @memcpy(result.ptr[chars1 .. chars1 + chars2], str2.ptr[0..chars2]);

@@ -99,6 +99,9 @@ pub const BasicDie = struct {
 
         self.nextResult = 0;
         const tooltip = "";
+        if (self.tooltip.len > 0) {
+            state.allocator.free(self.tooltip);
+        }
         self.tooltip = tooltip;
 
         return .{
@@ -172,19 +175,10 @@ pub const BasicDie = struct {
             defer string.deinit();
             if (self.tooltip.len > 0) {
                 const tt = try concatStrings(state.allocator, self.name, self.tooltip);
+                defer state.allocator.free(tt);
                 try string.appendSlice(tt);
-                // _ = std.fmt.bufPrintZ(
-                //     &buffer,
-                //     "{s}\n{s}",
-                //     .{ self.name, self.tooltip },
-                // ) catch "";
             } else {
                 try string.appendSlice(self.name);
-                // _ = std.fmt.bufPrintZ(
-                //     &buffer,
-                //     "{s}",
-                //     .{self.name},
-                // ) catch "";
             }
 
             rl.drawRectangle(
@@ -252,6 +246,14 @@ pub const BasicDie = struct {
                 0.0,
                 .white,
             );
+        }
+    }
+
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        if (self.tooltip.len > 0) {
+            std.debug.print("*********\nDEINIT DIE TOOLTIP\n\n", .{});
+            state.allocator.free(self.tooltip);
         }
     }
 

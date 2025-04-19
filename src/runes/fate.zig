@@ -162,26 +162,11 @@ pub const FateRune = struct {
 
         std.debug.print("Next result: {d}\n", .{nextResult});
 
-        var floatLog: f16 = 1.0;
         if (nextResult > 0) {
-            floatLog = @floor(@log10(@as(f16, @floatFromInt(nextResult))) + 1.0);
-
-            const digits: u64 = @as(u64, @intFromFloat(floatLog));
-
-            const buffer = try state.allocator.allocSentinel(
-                u8,
-                10 + digits,
-                0,
-            );
-
-            _ = std.fmt.bufPrint(
-                buffer,
-                "Will roll {d}",
-                .{nextResult},
-            ) catch "";
+            const st = try std.fmt.allocPrintZ(state.allocator, "\nWill roll {d}", .{nextResult});
 
             std.debug.print("Set tooltip\n", .{});
-            try d.setTooltip(buffer);
+            try d.setTooltip(st);
         }
     }
 

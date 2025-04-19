@@ -210,12 +210,13 @@ pub fn main() anyerror!void {
     std.debug.print("\n\nRAYLIB VERSION {s}\n", .{rl.RAYLIB_VERSION});
     std.debug.print("GAME START {s} {}\n\n", .{ gameName, std.time.timestamp() });
 
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
+    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    // defer arena.deinit();
+    // const allocator = arena.allocator();
 
-    // var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    // const allocator = gpa.allocator();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
 
     const List = std.ArrayList(@import("objects/grid.zig").CellTexture);
     const AltarHistoryList = std.ArrayList(AltarHistory);
@@ -307,14 +308,25 @@ pub fn main() anyerror!void {
 
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
-    try state.generateNextMap("Ascend", .ASCEND);
-    try state.generateNextMap("Boss", .BOSS);
-    try state.generateNextMap("Dungeon", .DUNGEON);
-    try state.generateNextMap("Shop", .SHOP);
+
+    // try state.generateNextMap("Dungeon 1", .DUNGEON);
+    // try state.generateNextMap("Boss 1", .BOSS);
+    // try state.generateNextMap("Shop 1", .SHOP);
+
+    // try state.generateNextMap("Dungeon 2", .DUNGEON);
+    // try state.generateNextMap("Boss 2", .BOSS);
+    // try state.generateNextMap("Shop 2", .SHOP);
+
+    // try state.generateNextMap("Dungeon 3", .DUNGEON);
+    // try state.generateNextMap("Boss 3", .BOSS);
+    // try state.generateNextMap("Shop 3", .SHOP);
+
+    // try state.generateNextMap("Ascend", .ASCEND);
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
     std.debug.print(" {s}\n", .{state.map.?.name});
+    defer state.map.?.deinitAll(&state);
 
     const groundY = state.grid.getGroundY();
 
@@ -355,6 +367,7 @@ pub fn main() anyerror!void {
     while (dcount < numd6) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
         var d6 = try state.allocator.create(BasicDie);
+        defer state.allocator.destroy(d6);
         d6.name = "Basic d6";
         d6.sides = 6;
         d6.texture = state.textureMap.get(.D6);
@@ -377,6 +390,7 @@ pub fn main() anyerror!void {
     while (dcount < numd4) : (dcount += 1) {
         xoffset = 50 * @as(f32, @floatFromInt(dcount));
         var d4 = try state.allocator.create(MultDie);
+        defer state.allocator.destroy(d4);
         d4.name = "Mult d4";
         d4.sides = 4;
         d4.texture = state.textureMap.get(.D4);
@@ -398,6 +412,7 @@ pub fn main() anyerror!void {
 
     // TEST RUNES
     var dawnRune: *DawnRune = try allocator.create(DawnRune);
+    defer allocator.destroy(dawnRune);
     dawnRune.name = "Dawn";
     dawnRune.pos = .{
         .x = state.grid.getWidth() - 250.0,
@@ -407,6 +422,7 @@ pub fn main() anyerror!void {
     try state.player.runes.?.append(dr);
 
     var kinRune: *KinRune = try allocator.create(KinRune);
+    defer allocator.destroy(kinRune);
     kinRune.name = "Kin";
     kinRune.pos = .{
         .x = state.grid.getWidth() - 220.0,
@@ -416,6 +432,7 @@ pub fn main() anyerror!void {
     try state.player.runes.?.append(kr);
 
     var fateRune: *FateRune = try allocator.create(FateRune);
+    defer allocator.destroy(fateRune);
     fateRune.name = "Fate";
     fateRune.pos = .{
         .x = state.grid.getWidth() - 190.0,
@@ -574,6 +591,12 @@ pub fn main() anyerror!void {
     }
 
     // Clean up
+    try state.player.deinit(&state);
+
+    if (state.stateMachine) |sm| {
+        try sm.clearState();
+    }
+
     const it = state.textureMap.keyIterator();
     for (0..it.len) |i| {
         const textureKey = it.items[i];

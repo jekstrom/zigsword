@@ -53,15 +53,20 @@ pub const State = struct {
     }
 
     pub fn goToNextMap(self: *@This()) !void {
+        if (self.map == null) {
+            return;
+        }
+
         if (self.map.?.nextMap) |nm| {
+            self.map.?.deinit(self);
             self.map = nm.*;
             self.currentMap = self.map.?.currentMapCount;
             self.currentNode = 0;
             self.grid.clearTextures();
         } else {
             try self.generateNextMap("MORE DUNGEON", .DUNGEON);
-            try self.generateNextMap("MORE BOSS", .BOSS);
-            try self.generateNextMap("MORE SHOP", .SHOP);
+            // try self.generateNextMap("MORE BOSS", .BOSS);
+            // try self.generateNextMap("MORE SHOP", .SHOP);
             try self.goToNextMap();
         }
     }
@@ -86,6 +91,7 @@ pub const State = struct {
         }
 
         var newMap = try self.allocator.create(m.Map);
+        defer self.allocator.destroy(newMap);
 
         newMap.currentMapCount = 1;
         newMap.name = name;
@@ -93,29 +99,13 @@ pub const State = struct {
         newMap.nextMap = null;
 
         // TODO: Deallocate maps and nodes
-
         for (0..numWalkingNodes) |i| {
             // Create new nodes for the map, assigning a name.
-            const baseName = "Map Node ";
-            var floatLog: f16 = 1.0;
-            if (i > 0) {
-                floatLog = @floor(@log10(@as(f16, @floatFromInt(i))) + 1.0);
-            }
-            const digits: u64 = @as(u64, @intFromFloat(floatLog));
-            const buffer = try self.allocator.allocSentinel(
-                u8,
-                baseName.len + digits,
-                0,
-            );
-            _ = std.fmt.bufPrint(
-                buffer,
-                "{s}{d}",
-                .{ baseName, i },
-            ) catch "";
+            const st = try std.fmt.allocPrintZ(self.allocator, "Map node {d}", .{i});
 
             if (nodeType == .WALKING) {
                 var outsideNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.OUTSIDEGROUND),
                     .background = self.textureMap.get(.OUTSIDEBACKGROUND),
@@ -129,7 +119,7 @@ pub const State = struct {
                 try newMap.addMapNode(outsideNode);
             } else if (nodeType == .DUNGEON) {
                 var dungeonNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
@@ -143,7 +133,7 @@ pub const State = struct {
                 try newMap.addMapNode(dungeonNode);
             } else if (nodeType == .BOSS) {
                 var dungeonNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
@@ -157,7 +147,7 @@ pub const State = struct {
                 try newMap.addMapNode(dungeonNode);
             } else if (nodeType == .ASCENDBOSS) {
                 var ascendBossNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.ASCENDBOSSBACKGROUND),
@@ -171,7 +161,7 @@ pub const State = struct {
                 try newMap.addMapNode(ascendBossNode);
             } else if (nodeType == .SHOP) {
                 var shopNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.SHOPBACKGROUND),
@@ -185,7 +175,7 @@ pub const State = struct {
                 try newMap.addMapNode(shopNode);
             } else if (nodeType == .ASCEND) {
                 var shopNode: m.MapNode = .{
-                    .name = buffer,
+                    .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.ASCEND1BACKGROUND),
@@ -321,19 +311,22 @@ pub const State = struct {
         if (self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
             // do state transition
             std.debug.print("STATE COMPLETE\n\n", .{});
+
             const curState = self.stateMachine.?.state.?;
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
+
             if (nextState != null) {
                 try self.stateMachine.?.setState(nextState.?, self);
             } else if (curState.smType != .TUTORIAL) {
-                try self.stateMachine.?.clearState();
-                std.debug.print("TRANSITION FROM WALKING\n\n", .{});
+                std.debug.print("STATE TRANSITION\n\n", .{});
                 // Next state is null and current state is WALKING, go to next map node.
                 try self.goToNextMapNode();
                 const monster = try self.getMonster();
                 var nextSmState: ?*sm.SMState = null;
                 if (monster != null) {
+                    std.debug.print("FOUND MONSTER\n", .{});
                     var battleState = try self.allocator.create(BattleState);
+                    defer self.allocator.destroy(battleState);
                     battleState.nextState = null;
                     battleState.isComplete = false;
                     battleState.startTime = rl.getTime();
@@ -342,6 +335,7 @@ pub const State = struct {
                     nextSmState = battleSmState;
                 } else if (try self.isShop()) {
                     var shopState = try self.allocator.create(ShopState);
+                    defer self.allocator.destroy(shopState);
                     shopState.nextState = null;
                     shopState.isComplete = false;
                     shopState.startTime = rl.getTime();
@@ -350,6 +344,7 @@ pub const State = struct {
                     nextSmState = shopSmState;
                 } else {
                     var walkingState = try self.allocator.create(WalkingState);
+                    defer self.allocator.destroy(walkingState);
                     walkingState.nextState = null;
                     walkingState.isComplete = false;
                     walkingState.startTime = rl.getTime();
@@ -367,6 +362,7 @@ pub const State = struct {
             } else if (curState.smType == .TUTORIAL) {
                 // Handle initial walking state
                 var walkingState = try self.allocator.create(WalkingState);
+                defer self.allocator.destroy(walkingState);
                 walkingState.nextState = null;
                 walkingState.isComplete = false;
                 walkingState.startTime = rl.getTime();

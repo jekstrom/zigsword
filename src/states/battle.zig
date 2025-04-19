@@ -67,6 +67,10 @@ pub const BattleState = struct {
                         try self.showLootDialog(state);
                     } else if (self.lootHandled and state.adventurer.exit(state)) {
                         // No more monsters, we're done here.
+                        // check for boss monster
+                        // check for ascend boss
+                        // if it is ascend boss, go to end screen
+
                         self.isComplete = true;
                     }
                 }
@@ -78,7 +82,6 @@ pub const BattleState = struct {
         const currentMapNode = try state.getCurrentMapNode();
 
         var totalGold: u8 = 0;
-        var buffer: ?[]u8 = null;
         var string = std.ArrayList(u8).init(state.allocator);
         defer string.deinit();
 
@@ -105,23 +108,9 @@ pub const BattleState = struct {
                     }
                 }
 
-                var floatLog: f16 = 1.0;
-                if (gold > 0) {
-                    floatLog = @floor(@log10(@as(f16, @floatFromInt(gold))) + 1.0);
-                }
-                const digits: u64 = @as(u64, @intFromFloat(floatLog));
-                buffer = try state.allocator.allocSentinel(
-                    u8,
-                    2 + digits,
-                    0,
-                );
-
-                _ = std.fmt.bufPrint(
-                    buffer.?,
-                    "{d}gp",
-                    .{gold},
-                ) catch "";
-                try string.appendSlice(buffer.?);
+                const st = try std.fmt.allocPrint(state.allocator, "{d}gp", .{totalGold});
+                defer state.allocator.free(st);
+                try string.appendSlice(st);
             }
         }
 
@@ -130,7 +119,7 @@ pub const BattleState = struct {
         const messageWidth = 500;
 
         const sresult = try state.allocator.allocSentinel(u8, string.items.len, 0);
-        errdefer state.allocator.free(sresult);
+        defer state.allocator.free(sresult);
         @memcpy(sresult.ptr[0..string.items.len], string.items.ptr[0..string.items.len]);
 
         const messageRect: rl.Rectangle = .{

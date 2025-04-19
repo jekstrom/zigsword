@@ -75,7 +75,6 @@ pub const AscendWalkingEvent = struct {
                 self.handled = true;
                 // Go to boss fight.
                 try state.generateNextMap("Ascend Boss", .ASCENDBOSS);
-                try state.goToNextMap();
                 return;
             }
         } else {

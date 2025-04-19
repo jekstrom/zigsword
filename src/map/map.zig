@@ -35,6 +35,23 @@ pub const MapNode = struct {
         );
     }
 
+    pub fn deinit(self: *@This(), state: *s.State) void {
+        std.debug.print("DEINIT NODE {}\n", .{self.type});
+        if (self.monsters) |monsters| {
+            for (0..monsters.items.len) |i| {
+                monsters.items[i].deinit();
+            }
+            monsters.deinit();
+        }
+        if (self.shopItems) |shopItems| {
+            for (0..shopItems.items.len) |i| {
+                shopItems.items[i].deinit(state);
+            }
+            shopItems.deinit();
+        }
+        state.allocator.free(self.name);
+    }
+
     pub fn init(self: *@This(), state: *s.State) !void {
         const nodeContents = state.rand.intRangeAtMost(u4, 0, 15);
         const MonsterMessages = std.ArrayList([:0]const u8);
@@ -47,6 +64,7 @@ pub const MapNode = struct {
                 std.debug.print("Adding Altar to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
                 var walkingEvent = try state.allocator.create(altar.AlterWalkingEvent);
+                defer state.allocator.destroy(walkingEvent);
                 walkingEvent.alignment = .GOOD;
                 walkingEvent.handled = false;
                 walkingEvent.name = "Good Altar";
@@ -67,6 +85,7 @@ pub const MapNode = struct {
             std.debug.print("Adding Ascend event to node {s}\n", .{self.name});
             const groundCenter = state.grid.getGroundCenterPos();
             var walkingEvent = try state.allocator.create(AscendWalkingEvent);
+            defer state.allocator.destroy(walkingEvent);
             walkingEvent.handled = false;
             walkingEvent.name = "Ascend";
             walkingEvent.eventType = .ASCEND;
@@ -80,6 +99,7 @@ pub const MapNode = struct {
 
         if (self.type == .BOSS) {
             var kinRune: *KinRune = try state.allocator.create(KinRune);
+            defer state.allocator.destroy(kinRune);
             kinRune.name = "Kin";
             kinRune.pos = .{
                 .x = state.grid.getWidth() - 305.0,
@@ -88,6 +108,7 @@ pub const MapNode = struct {
             const kr = try kinRune.rune(&state.allocator);
 
             var fateRune: *FateRune = try state.allocator.create(FateRune);
+            defer state.allocator.destroy(fateRune);
             fateRune.name = "Fate";
             fateRune.pos = .{
                 .x = state.grid.getWidth() - 225.0,
@@ -96,6 +117,7 @@ pub const MapNode = struct {
             const fr = try fateRune.rune(&state.allocator);
 
             var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
+            defer state.allocator.destroy(dawnRune);
             dawnRune.name = "Dawn";
             dawnRune.pos = .{
                 .x = state.grid.getWidth() - 225.0,
@@ -127,6 +149,7 @@ pub const MapNode = struct {
 
         if (self.type == .ASCENDBOSS) {
             var kinRune: *KinRune = try state.allocator.create(KinRune);
+            defer state.allocator.destroy(kinRune);
             kinRune.name = "Kin";
             kinRune.pos = .{
                 .x = state.grid.getWidth() - 305.0,
@@ -135,6 +158,7 @@ pub const MapNode = struct {
             const kr = try kinRune.rune(&state.allocator);
 
             var fateRune: *FateRune = try state.allocator.create(FateRune);
+            defer state.allocator.destroy(fateRune);
             fateRune.name = "Fate";
             fateRune.pos = .{
                 .x = state.grid.getWidth() - 225.0,
@@ -143,6 +167,7 @@ pub const MapNode = struct {
             const fr = try fateRune.rune(&state.allocator);
 
             var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
+            defer state.allocator.destroy(dawnRune);
             dawnRune.name = "Dawn";
             dawnRune.pos = .{
                 .x = state.grid.getWidth() - 225.0,
@@ -207,6 +232,7 @@ pub const MapNode = struct {
                 std.debug.print("Adding Treasure Chest to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
                 var walkingEvent = try state.allocator.create(treasure.TreasureWalkingEvent);
+                defer state.allocator.destroy(walkingEvent);
                 walkingEvent.gold = state.rand.intRangeAtMost(i32, 1, 10);
                 walkingEvent.handled = false;
                 walkingEvent.name = "Treasure Chest";
@@ -223,6 +249,7 @@ pub const MapNode = struct {
         if (self.type == .SHOP) {
             // TODO: Generate shop items
             var d6 = try state.allocator.create(BasicDie);
+            defer state.allocator.destroy(d6);
             d6.name = "Basic d6";
             d6.sides = 6;
             d6.texture = state.textureMap.get(.D6);
@@ -237,6 +264,7 @@ pub const MapNode = struct {
             const d6die = try d6.die(&state.allocator);
 
             var d4 = try state.allocator.create(BasicDie);
+            defer state.allocator.destroy(d4);
             d4.name = "Basic d4";
             d4.sides = 4;
             d4.texture = state.textureMap.get(.D4);
@@ -611,11 +639,26 @@ pub const Map = struct {
 
     pub fn traverse(self: *@This(), callback: fn (?*Map) void) void {
         var currentMap: ?*Map = self;
-        //callback(currentMap);
 
         while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
             callback(currentMap);
         }
+    }
+
+    pub fn deinitAll(self: *@This(), state: *s.State) void {
+        var currentMap: ?*Map = self;
+
+        while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
+            std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
+            currentMap.?.deinit(state);
+        }
+    }
+
+    pub fn deinit(self: *@This(), state: *s.State) void {
+        for (0..self.nodes.items.len) |i| {
+            self.nodes.items[i].deinit(state);
+        }
+        self.nodes.deinit();
     }
 
     pub fn debug(map: ?*Map) void {
