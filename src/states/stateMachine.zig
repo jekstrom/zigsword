@@ -10,17 +10,12 @@ pub const StateMachine = struct {
     allocator: *const std.mem.Allocator,
 
     pub fn setState(self: *@This(), newState: *sm.SMState, state: *s.State) anyerror!void {
-        if (self.state == null or self.state.?.smType != newState.smType) {
-            if (self.state != null) {
-                try self.state.?.exit(state);
-                try self.clearState();
-            }
-            self.state = newState;
-            try self.state.?.enter(state);
-        } else {
-            // Did not transition to new state, so we should clean it up.
-            self.allocator.destroy(newState);
+        if (self.state != null) {
+            try self.state.?.exit(state);
+            try self.clearState();
         }
+        self.state = newState;
+        try self.state.?.enter(state);
     }
 
     pub fn clearState(self: *@This()) anyerror!void {

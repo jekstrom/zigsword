@@ -103,6 +103,11 @@ pub const AscendWalkingEvent = struct {
         self.handled = false;
     }
 
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *AscendWalkingEvent = @ptrCast(@alignCast(ptr));
+        state.allocator.destroy(self);
+    }
+
     pub fn event(self: *AscendWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
         return try evt.Event.init(
             self,

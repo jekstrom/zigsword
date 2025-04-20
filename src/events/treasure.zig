@@ -111,6 +111,11 @@ pub const TreasureWalkingEvent = struct {
         );
     }
 
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *TreasureWalkingEvent = @ptrCast(@alignCast(ptr));
+        state.allocator.destroy(self);
+    }
+
     pub fn event(self: *TreasureWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
         return try evt.Event.init(
             self,

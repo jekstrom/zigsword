@@ -321,12 +321,12 @@ pub fn main() anyerror!void {
     // try state.generateNextMap("Boss 3", .BOSS);
     // try state.generateNextMap("Shop 3", .SHOP);
 
-    // try state.generateNextMap("Ascend", .ASCEND);
+    try state.generateNextMap("Ascend", .ASCEND);
+
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
     std.debug.print("current map: {d}", .{state.currentMap});
     std.debug.print(" {s}\n", .{state.map.?.name});
-    defer state.map.?.deinitAll(&state);
 
     const groundY = state.grid.getGroundY();
 
@@ -596,6 +596,8 @@ pub fn main() anyerror!void {
     if (state.stateMachine) |sm| {
         try sm.clearState();
     }
+
+    try state.map.?.deinitAll(&state);
 
     const it = state.textureMap.keyIterator();
     for (0..it.len) |i| {

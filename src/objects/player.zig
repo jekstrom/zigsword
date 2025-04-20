@@ -24,6 +24,7 @@ pub const Player = struct {
     maxSelectedDice: u8,
     messages: ?std.ArrayList([:0]const u8),
     playerMsgDecay: u8 = 255,
+    monstersKilled: u8 = 0,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
     runes: ?std.ArrayList(*Rune),
 

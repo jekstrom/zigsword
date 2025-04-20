@@ -121,6 +121,11 @@ pub const AlterWalkingEvent = struct {
         );
     }
 
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        state.allocator.destroy(self);
+    }
+
     pub fn event(self: *AlterWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
         return try evt.Event.init(
             self,

@@ -82,9 +82,6 @@ pub const BattleState = struct {
         const currentMapNode = try state.getCurrentMapNode();
 
         var totalGold: u8 = 0;
-        var string = std.ArrayList(u8).init(state.allocator);
-        defer string.deinit();
-
         var totalRunes = std.ArrayList(*Rune).init(state.allocator);
         defer totalRunes.deinit();
 
@@ -95,22 +92,12 @@ pub const BattleState = struct {
                 totalGold += gold;
                 const runes = monster.runes;
 
-                var runeNameLen: u8 = 0;
-
                 if (runes != null and runes.?.items.len > 0) {
                     for (0..runes.?.items.len) |r| {
                         const rune: *Rune = runes.?.items[r];
                         try totalRunes.append(rune);
-                        runeNameLen += @as(u8, @intCast(rune.name.len)) + @as(u8, @intCast(6));
-                        const label = " Rune\n";
-                        const runeLabel = try concatStrings(state.allocator, rune.name, label);
-                        try string.appendSlice(runeLabel);
                     }
                 }
-
-                const st = try std.fmt.allocPrint(state.allocator, "{d}gp", .{totalGold});
-                defer state.allocator.free(st);
-                try string.appendSlice(st);
             }
         }
 
@@ -118,9 +105,8 @@ pub const BattleState = struct {
         const messageHeight = 200;
         const messageWidth = 500;
 
-        const sresult = try state.allocator.allocSentinel(u8, string.items.len, 0);
-        defer state.allocator.free(sresult);
-        @memcpy(sresult.ptr[0..string.items.len], string.items.ptr[0..string.items.len]);
+        const string = try std.fmt.allocPrintZ(state.allocator, " {d}gp", .{totalGold});
+        defer state.allocator.free(string);
 
         const messageRect: rl.Rectangle = .{
             .height = messageHeight,
@@ -131,7 +117,7 @@ pub const BattleState = struct {
         const result = ui.guiMessageBox(
             messageRect,
             "Loot",
-            sresult,
+            string,
             "next;take",
         );
 

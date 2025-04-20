@@ -35,7 +35,7 @@ pub const MapNode = struct {
         );
     }
 
-    pub fn deinit(self: *@This(), state: *s.State) void {
+    pub fn deinit(self: *@This(), state: *s.State) !void {
         std.debug.print("DEINIT NODE {}\n", .{self.type});
         if (self.monsters) |monsters| {
             for (0..monsters.items.len) |i| {
@@ -48,6 +48,9 @@ pub const MapNode = struct {
                 shopItems.items[i].deinit(state);
             }
             shopItems.deinit();
+        }
+        if (self.event) |evt| {
+            try evt.deinit(state);
         }
         state.allocator.free(self.name);
     }
@@ -64,7 +67,7 @@ pub const MapNode = struct {
                 std.debug.print("Adding Altar to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
                 var walkingEvent = try state.allocator.create(altar.AlterWalkingEvent);
-                defer state.allocator.destroy(walkingEvent);
+
                 walkingEvent.alignment = .GOOD;
                 walkingEvent.handled = false;
                 walkingEvent.name = "Good Altar";
@@ -85,7 +88,7 @@ pub const MapNode = struct {
             std.debug.print("Adding Ascend event to node {s}\n", .{self.name});
             const groundCenter = state.grid.getGroundCenterPos();
             var walkingEvent = try state.allocator.create(AscendWalkingEvent);
-            defer state.allocator.destroy(walkingEvent);
+
             walkingEvent.handled = false;
             walkingEvent.name = "Ascend";
             walkingEvent.eventType = .ASCEND;
@@ -353,6 +356,7 @@ pub const MapNode = struct {
                 const hp = monster.health;
                 if (hp <= 0 and !monster.dying) {
                     monster.dying = true;
+                    state.player.monstersKilled += 1;
                 }
             }
         }
@@ -645,18 +649,18 @@ pub const Map = struct {
         }
     }
 
-    pub fn deinitAll(self: *@This(), state: *s.State) void {
+    pub fn deinitAll(self: *@This(), state: *s.State) !void {
         var currentMap: ?*Map = self;
 
         while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
             std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
-            currentMap.?.deinit(state);
+            try currentMap.?.deinit(state);
         }
     }
 
-    pub fn deinit(self: *@This(), state: *s.State) void {
+    pub fn deinit(self: *@This(), state: *s.State) !void {
         for (0..self.nodes.items.len) |i| {
-            self.nodes.items[i].deinit(state);
+            try self.nodes.items[i].deinit(state);
         }
         self.nodes.deinit();
     }

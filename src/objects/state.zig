@@ -6,6 +6,7 @@ const g = @import("grid.zig");
 const mob = @import("monster.zig");
 const sm = @import("../states/smState.zig");
 const WalkingState = @import("../states/walking.zig").WalkingState;
+const GameEndState = @import("../states/gameEnd.zig").GameEndState;
 const BattleState = @import("../states/battle.zig").BattleState;
 const ShopState = @import("../states/shop.zig").ShopState;
 const ShopItem = @import("shopitem.zig").ShopItem;
@@ -40,7 +41,7 @@ pub const State = struct {
             const numnodes = map.nodes.items.len;
             if ((self.currentNode + 1) >= numnodes) {
                 self.currentNode = 0;
-                std.debug.print("Resetting map node {d}\n", .{self.currentNode});
+                std.debug.print("Resetting map. Going to node {d}\n", .{self.currentNode});
                 try self.goToNextMap();
             } else {
                 self.currentNode += 1;
@@ -58,7 +59,8 @@ pub const State = struct {
         }
 
         if (self.map.?.nextMap) |nm| {
-            self.map.?.deinit(self);
+            std.debug.print("Going to map {s}\n", .{nm.name});
+            try self.map.?.deinit(self);
             self.map = nm.*;
             self.currentMap = self.map.?.currentMapCount;
             self.currentNode = 0;
@@ -174,7 +176,7 @@ pub const State = struct {
                 try shopNode.init(self);
                 try newMap.addMapNode(shopNode);
             } else if (nodeType == .ASCEND) {
-                var shopNode: m.MapNode = .{
+                var ascendNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
@@ -185,8 +187,8 @@ pub const State = struct {
                     .shopItems = null,
                     .stateMachine = null,
                 };
-                try shopNode.init(self);
-                try newMap.addMapNode(shopNode);
+                try ascendNode.init(self);
+                try newMap.addMapNode(ascendNode);
             }
         }
 
@@ -300,6 +302,14 @@ pub const State = struct {
         return false;
     }
 
+    pub fn isAscendBoss(self: *@This()) !bool {
+        const currentMapNode = try self.getCurrentMapNode();
+        if (currentMapNode) |cn| {
+            return cn.type == .ASCENDBOSS;
+        }
+        return false;
+    }
+
     pub fn getConsistentRandomNumber(self: *@This(), row: usize, col: usize, lowerBound: u16, upperBound: u16) u16 {
         const num = self.randomNumbers[row][col];
         const normalized = @as(f32, @floatFromInt(num)) / 65535.0;
@@ -318,7 +328,6 @@ pub const State = struct {
             if (nextState != null) {
                 try self.stateMachine.?.setState(nextState.?, self);
             } else if (curState.smType != .TUTORIAL) {
-                std.debug.print("STATE TRANSITION\n\n", .{});
                 // Next state is null and current state is WALKING, go to next map node.
                 try self.goToNextMapNode();
                 const monster = try self.getMonster();
@@ -342,6 +351,14 @@ pub const State = struct {
 
                     const shopSmState = try shopState.smState(&self.allocator);
                     nextSmState = shopSmState;
+                } else if (try self.isAscendBoss()) {
+                    var gameEndState = try self.allocator.create(GameEndState);
+                    defer self.allocator.destroy(gameEndState);
+                    gameEndState.nextState = null;
+                    gameEndState.isComplete = false;
+                    gameEndState.startTime = rl.getTime();
+                    const gameEndSmState = try gameEndState.smState(&self.allocator);
+                    nextSmState = gameEndSmState;
                 } else {
                     var walkingState = try self.allocator.create(WalkingState);
                     defer self.allocator.destroy(walkingState);
@@ -353,10 +370,11 @@ pub const State = struct {
                 }
 
                 if (nextSmState) |ns| {
+                    std.debug.print("STATE TRANSITION {} -> {}\n\n", .{ curState.smType, ns.smType });
                     try self.stateMachine.?.setState(ns, self);
                 } else {
                     // There should always be a next state to transition to.
-                    std.debug.print("No next state found!\n", .{});
+                    std.debug.print("\nNo next state found!\n", .{});
                     std.debug.assert(false);
                 }
             } else if (curState.smType == .TUTORIAL) {

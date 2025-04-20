@@ -15,6 +15,7 @@ pub const Event = struct {
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHandledFn: *const fn (ptr: *anyopaque) anyerror!bool,
     handleFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
+    deinitFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
     pub fn getName(self: *@This()) anyerror![:0]const u8 {
@@ -39,6 +40,10 @@ pub const Event = struct {
 
     pub fn draw(self: *@This(), state: *s.State) anyerror!void {
         return self.drawFn(self.ptr, state);
+    }
+
+    pub fn deinit(self: *@This(), state: *s.State) anyerror!void {
+        return self.deinitFn(self.ptr, state);
     }
 
     pub fn init(
@@ -88,6 +93,13 @@ pub const Event = struct {
                 return ptr_info.pointer.child.handle(self, state);
             }
 
+            pub fn deinit(pointer: *anyopaque, state: *s.State) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return ptr_info.pointer.child.deinit(self, state);
+            }
+
             pub fn draw(pointer: *anyopaque, state: *s.State) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -107,6 +119,7 @@ pub const Event = struct {
         sobj.getPosFn = gen.getPos;
         sobj.getHandledFn = gen.getHandled;
         sobj.drawFn = gen.draw;
+        sobj.deinitFn = gen.deinit;
         sobj.handleFn = gen.handle;
         return sobj;
     }
