@@ -34,11 +34,14 @@ pub const Monster = struct {
         return true;
     }
 
-    pub fn deinit(self: *@This()) void {
-        if (self.runes) |runes| {
-            if (runes.items.len > 0) {
-                runes.deinit();
+    pub fn deinit(self: *@This(), state: *s.State) !void {
+        std.debug.print("DEINIT MONSTER {s}\n", .{self.name});
+        if (self.runes != null) {
+            for (0..self.runes.?.items.len) |i| {
+                try self.runes.?.items[i].deinit(state);
+                state.allocator.destroy(self.runes.?.items[i]);
             }
+            self.runes.?.deinit();
         }
         if (self.messages) |messages| {
             messages.deinit();

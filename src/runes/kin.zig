@@ -40,6 +40,11 @@ pub const KinRune = struct {
         self.selected = val;
     }
 
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *KinRune = @ptrCast(@alignCast(ptr));
+        state.allocator.destroy(self);
+    }
+
     pub fn draw(ptr: *anyopaque, state: *s.State) void {
         const self: *KinRune = @ptrCast(@alignCast(ptr));
 

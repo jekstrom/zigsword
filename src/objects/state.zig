@@ -332,7 +332,15 @@ pub const State = struct {
                 try self.goToNextMapNode();
                 const monster = try self.getMonster();
                 var nextSmState: ?*sm.SMState = null;
-                if (monster != null) {
+                if (try self.isAscendBoss()) {
+                    var gameEndState = try self.allocator.create(GameEndState);
+                    defer self.allocator.destroy(gameEndState);
+                    gameEndState.nextState = null;
+                    gameEndState.isComplete = false;
+                    gameEndState.startTime = rl.getTime();
+                    const gameEndSmState = try gameEndState.smState(&self.allocator);
+                    nextSmState = gameEndSmState;
+                } else if (monster != null) {
                     std.debug.print("FOUND MONSTER\n", .{});
                     var battleState = try self.allocator.create(BattleState);
                     defer self.allocator.destroy(battleState);
@@ -351,14 +359,6 @@ pub const State = struct {
 
                     const shopSmState = try shopState.smState(&self.allocator);
                     nextSmState = shopSmState;
-                } else if (try self.isAscendBoss()) {
-                    var gameEndState = try self.allocator.create(GameEndState);
-                    defer self.allocator.destroy(gameEndState);
-                    gameEndState.nextState = null;
-                    gameEndState.isComplete = false;
-                    gameEndState.startTime = rl.getTime();
-                    const gameEndSmState = try gameEndState.smState(&self.allocator);
-                    nextSmState = gameEndSmState;
                 } else {
                     var walkingState = try self.allocator.create(WalkingState);
                     defer self.allocator.destroy(walkingState);

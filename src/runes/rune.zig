@@ -15,6 +15,7 @@ pub const Rune = struct {
     setSelectedFn: *const fn (ptr: *anyopaque, val: bool) anyerror!void,
     setPosFn: *const fn (ptr: *anyopaque, newPos: rl.Vector2) anyerror!void,
     handleFn: *const fn (ptr: *anyopaque, state: *s.State, rollResults: ?*std.ArrayList(RollResult)) anyerror!void,
+    deinitFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
 
     pub fn getName(self: *@This()) anyerror![:0]const u8 {
@@ -43,6 +44,10 @@ pub const Rune = struct {
 
     pub fn draw(self: *@This(), state: *s.State) anyerror!void {
         return self.drawFn(self.ptr, state);
+    }
+
+    pub fn deinit(self: *@This(), state: *s.State) anyerror!void {
+        return self.deinitFn(self.ptr, state);
     }
 
     pub fn init(
@@ -96,6 +101,13 @@ pub const Rune = struct {
                 return ptr_info.pointer.child.handle(self, state, rollResults);
             }
 
+            pub fn deinit(pointer: *anyopaque, state: *s.State) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return ptr_info.pointer.child.deinit(self, state);
+            }
+
             pub fn draw(pointer: *anyopaque, state: *s.State) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -114,6 +126,7 @@ pub const Rune = struct {
         sobj.setPosFn = gen.setPos;
         sobj.drawFn = gen.draw;
         sobj.handleFn = gen.handle;
+        sobj.deinitFn = gen.deinit;
         return sobj;
     }
 };

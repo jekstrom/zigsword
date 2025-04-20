@@ -39,6 +39,11 @@ pub const FateRune = struct {
         self.selected = val;
     }
 
+    pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
+        const self: *FateRune = @ptrCast(@alignCast(ptr));
+        state.allocator.destroy(self);
+    }
+
     pub fn draw(ptr: *anyopaque, state: *s.State) void {
         const self: *FateRune = @ptrCast(@alignCast(ptr));
 
