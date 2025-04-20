@@ -90,11 +90,9 @@ pub const BasicDie = struct {
             curTotal = prevRollResult.items[prevRollResult.items.len - 1].num;
         }
 
-        var broken = false;
         if (self.breakChance > 0) {
             const broke = state.rand.intRangeAtMost(u7, 1, std.math.maxInt(u7));
-            broken = self.breakChance <= broke;
-            self.broken = broken;
+            self.broken = self.breakChance <= broke;
         }
 
         self.nextResult = 0;
@@ -110,7 +108,7 @@ pub const BasicDie = struct {
             .sides = self.sides,
             .rarity = 0,
             .color = 0,
-            .broken = broken,
+            .broken = self.broken,
         };
     }
 
@@ -252,7 +250,6 @@ pub const BasicDie = struct {
     pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         if (self.tooltip.len > 0) {
-            std.debug.print("*********\nDEINIT DIE TOOLTIP\n\n", .{});
             state.allocator.free(self.tooltip);
         }
     }

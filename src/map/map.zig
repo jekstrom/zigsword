@@ -13,6 +13,7 @@ const KinRune = @import("../runes/kin.zig").KinRune;
 const FateRune = @import("../runes/fate.zig").FateRune;
 const DawnRune = @import("../runes/dawn.zig").DawnRune;
 const Rune = @import("../runes/rune.zig").Rune;
+const GameEndState = @import("../states/gameEnd.zig").GameEndState;
 
 pub const MapNode = struct {
     name: [:0]u8,
@@ -354,6 +355,19 @@ pub const MapNode = struct {
                 if (hp <= 0 and !monster.dying) {
                     monster.dying = true;
                     state.player.monstersKilled += 1;
+                    if (std.mem.eql(u8, monster.name, "Ascend Boss")) {
+                        // TODO: Make ascend boss a special type of monster.
+                        // Go to end game state
+                        var gameEndState = try state.allocator.create(GameEndState);
+                        defer state.allocator.destroy(gameEndState);
+
+                        gameEndState.nextState = null;
+                        gameEndState.isComplete = false;
+                        gameEndState.startTime = rl.getTime();
+                        const gameEndSmState = try gameEndState.smState(&state.allocator);
+
+                        try state.stateMachine.?.setState(gameEndSmState, state);
+                    }
                 }
             }
         }

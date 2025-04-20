@@ -19,6 +19,7 @@ pub const Player = struct {
     altarHistory: ?std.ArrayList(ah.AltarHistory),
     blessed: bool,
     dice: ?std.ArrayList(*d.Die),
+    maxDice: u8,
     durability: u8,
     gold: i32,
     maxSelectedDice: u8,
@@ -29,7 +30,7 @@ pub const Player = struct {
     runes: ?std.ArrayList(*Rune),
 
     pub fn deinit(self: *@This(), state: *s.State) !void {
-        std.debug.print("*****PLAYER DEINIT\n\n", .{});
+        std.debug.print("PLAYER DEINIT\n\n", .{});
         if (self.altarHistory) |altarHistory| {
             altarHistory.deinit();
         }
@@ -104,7 +105,7 @@ pub const Player = struct {
         }
         std.debug.print("Final Roll result: {d} from {d} dice\n", .{ result, rollResults.items.len });
 
-        // remove selected dice
+        // clean up broken dice
         var i = self.dice.?.items.len;
         // Update new list with remaining dice that are not being removed.
         var newDice = std.ArrayList(*d.Die).init(state.allocator);
@@ -112,10 +113,11 @@ pub const Player = struct {
         var removedCount: i32 = 0;
         while (i > 0) {
             i -= 1;
-            if (try self.dice.?.items[i].getSelected() and try self.dice.?.items[i].getBroken()) {
+            if (try self.dice.?.items[i].getBroken()) {
                 removedCount += 1;
-                try self.dice.?.items[i].deinit(state);
-                _ = dice.?.orderedRemove(i);
+                const removedDie: *d.Die = dice.?.orderedRemove(i);
+                try removedDie.deinit(state);
+                state.allocator.destroy(removedDie);
             } else {
                 try newDice.insert(0, self.dice.?.items[i]);
             }

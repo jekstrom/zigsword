@@ -266,6 +266,7 @@ pub fn main() anyerror!void {
             .durability = 100,
             .gold = 0,
             .maxSelectedDice = 3,
+            .maxDice = 6,
             .messages = null,
             .stateMachine = null,
         },
@@ -309,9 +310,9 @@ pub fn main() anyerror!void {
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
 
-    // try state.generateNextMap("Dungeon 1", .DUNGEON);
-    // try state.generateNextMap("Boss 1", .BOSS);
-    // try state.generateNextMap("Shop 1", .SHOP);
+    try state.generateNextMap("Dungeon 1", .DUNGEON);
+    try state.generateNextMap("Boss 1", .BOSS);
+    try state.generateNextMap("Shop 1", .SHOP);
 
     // try state.generateNextMap("Dungeon 2", .DUNGEON);
     // try state.generateNextMap("Boss 2", .BOSS);
@@ -397,7 +398,7 @@ pub fn main() anyerror!void {
         d4.hovered = false;
         d4.selected = false;
         d4.broken = false;
-        d4.breakChance = 99;
+        d4.breakChance = 5;
         d4.nextResult = 0;
         d4.index = dcount;
         d4.tooltip = tooltip;
@@ -411,35 +412,35 @@ pub fn main() anyerror!void {
     }
 
     // TEST RUNES
-    var dawnRune: *DawnRune = try allocator.create(DawnRune);
-    defer allocator.destroy(dawnRune);
-    dawnRune.name = "Dawn";
-    dawnRune.pos = .{
-        .x = state.grid.getWidth() - 250.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const dr = try dawnRune.rune(&allocator);
-    try state.player.runes.?.append(dr);
+    // var dawnRune: *DawnRune = try allocator.create(DawnRune);
+    // defer allocator.destroy(dawnRune);
+    // dawnRune.name = "Dawn";
+    // dawnRune.pos = .{
+    //     .x = state.grid.getWidth() - 250.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const dr = try dawnRune.rune(&allocator);
+    // try state.player.runes.?.append(dr);
 
-    var kinRune: *KinRune = try allocator.create(KinRune);
-    defer allocator.destroy(kinRune);
-    kinRune.name = "Kin";
-    kinRune.pos = .{
-        .x = state.grid.getWidth() - 220.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const kr = try kinRune.rune(&allocator);
-    try state.player.runes.?.append(kr);
+    // var kinRune: *KinRune = try allocator.create(KinRune);
+    // defer allocator.destroy(kinRune);
+    // kinRune.name = "Kin";
+    // kinRune.pos = .{
+    //     .x = state.grid.getWidth() - 220.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const kr = try kinRune.rune(&allocator);
+    // try state.player.runes.?.append(kr);
 
-    var fateRune: *FateRune = try allocator.create(FateRune);
-    defer allocator.destroy(fateRune);
-    fateRune.name = "Fate";
-    fateRune.pos = .{
-        .x = state.grid.getWidth() - 190.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const fr = try fateRune.rune(&allocator);
-    try state.player.runes.?.append(fr);
+    // var fateRune: *FateRune = try allocator.create(FateRune);
+    // defer allocator.destroy(fateRune);
+    // fateRune.name = "Fate";
+    // fateRune.pos = .{
+    //     .x = state.grid.getWidth() - 190.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const fr = try fateRune.rune(&allocator);
+    // try state.player.runes.?.append(fr);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------

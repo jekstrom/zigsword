@@ -196,14 +196,14 @@ pub const Monster = struct {
                     .{
                         .x = 0,
                         .y = 0,
-                        .width = textureWidth,
-                        .height = textureHeight,
+                        .width = 256,
+                        .height = 256,
                     },
                     .{
                         .height = 256,
                         .width = 256,
                         .x = self.pos.x,
-                        .y = self.pos.y,
+                        .y = self.pos.y - 128,
                     },
                     .{ .x = 0, .y = 0 },
                     0.0,

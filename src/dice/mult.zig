@@ -90,11 +90,10 @@ pub const MultDie = struct {
         }
         std.debug.print("MULT {d} * {d}\n", .{ result, curTotal });
 
-        var broken = false;
         if (self.breakChance > 0) {
             const broke = state.rand.intRangeAtMost(u7, 1, std.math.maxInt(u7));
-            broken = self.breakChance <= broke;
-            self.broken = broken;
+            self.broken = self.breakChance <= broke;
+            std.debug.print("Die broke? {}\n", .{self.broken});
         }
 
         self.nextResult = 0;
@@ -110,7 +109,7 @@ pub const MultDie = struct {
             .sides = self.sides,
             .rarity = 0,
             .color = 0,
-            .broken = broken,
+            .broken = self.broken,
         };
     }
 

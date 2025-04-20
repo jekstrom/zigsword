@@ -302,14 +302,6 @@ pub const State = struct {
         return false;
     }
 
-    pub fn isAscendBoss(self: *@This()) !bool {
-        const currentMapNode = try self.getCurrentMapNode();
-        if (currentMapNode) |cn| {
-            return cn.type == .ASCENDBOSS;
-        }
-        return false;
-    }
-
     pub fn getConsistentRandomNumber(self: *@This(), row: usize, col: usize, lowerBound: u16, upperBound: u16) u16 {
         const num = self.randomNumbers[row][col];
         const normalized = @as(f32, @floatFromInt(num)) / 65535.0;
@@ -325,6 +317,12 @@ pub const State = struct {
             const curState = self.stateMachine.?.state.?;
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
 
+            if (curState.smType == .GAMEEND) {
+                self.phase = .START;
+                rl.closeWindow();
+                return;
+            }
+
             if (nextState != null) {
                 try self.stateMachine.?.setState(nextState.?, self);
             } else if (curState.smType != .TUTORIAL) {
@@ -332,15 +330,7 @@ pub const State = struct {
                 try self.goToNextMapNode();
                 const monster = try self.getMonster();
                 var nextSmState: ?*sm.SMState = null;
-                if (try self.isAscendBoss()) {
-                    var gameEndState = try self.allocator.create(GameEndState);
-                    defer self.allocator.destroy(gameEndState);
-                    gameEndState.nextState = null;
-                    gameEndState.isComplete = false;
-                    gameEndState.startTime = rl.getTime();
-                    const gameEndSmState = try gameEndState.smState(&self.allocator);
-                    nextSmState = gameEndSmState;
-                } else if (monster != null) {
+                if (monster != null) {
                     std.debug.print("FOUND MONSTER\n", .{});
                     var battleState = try self.allocator.create(BattleState);
                     defer self.allocator.destroy(battleState);
