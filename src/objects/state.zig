@@ -10,6 +10,7 @@ const GameEndState = @import("../states/gameEnd.zig").GameEndState;
 const BattleState = @import("../states/battle.zig").BattleState;
 const ShopState = @import("../states/shop.zig").ShopState;
 const ShopItem = @import("shopitem.zig").ShopItem;
+const MapMenu = @import("../map/mapMenu.zig").MapMenu;
 
 pub var DEBUG_MODE = false;
 
@@ -20,6 +21,7 @@ pub const State = struct {
     grid: g.Grid,
     mousePos: rl.Vector2,
     textureMap: std.AutoHashMap(enums.TextureType, rl.Texture),
+    font: rl.Font,
     phase: enums.GamePhase,
     mode: enums.GameMode,
     turn: enums.Turn,
@@ -29,6 +31,7 @@ pub const State = struct {
     maxSelectedRunes: u8 = 1,
     currentSelectedRuneCount: u8 = 0,
     map: ?m.Map,
+    mapMenu: ?*MapMenu,
     rand: std.Random,
     // a static collection of numbers, one per cell, to use as consistent values between maps for each game
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
@@ -41,12 +44,16 @@ pub const State = struct {
         // Reset after game end.
         std.debug.print("Reset game\n", .{});
         self.phase = .START;
-        self.mode = .TUTORIAL;
+        self.mode = .NONE;
         self.turn = .ENVIRONMENT;
         self.currentMap = 0;
         self.currentNode = 0;
 
         self.tutorialStep = 0;
+
+        for (0..self.newName.len) |i| {
+            self.newName[i] = 0;
+        }
 
         if (self.map != null) {
             try self.map.?.deinitAll(self);
@@ -83,7 +90,7 @@ pub const State = struct {
     }
 
     pub fn isMenu(self: @This()) bool {
-        return self.stateMachine != null and self.stateMachine.?.state != null and self.stateMachine.?.state.?.smType == .MENU;
+        return (self.stateMachine != null and self.stateMachine.?.state != null and self.stateMachine.?.state.?.smType == .MENU) or self.mode == .MENU;
     }
 
     pub fn goToNextMapNode(self: *@This()) !void {
@@ -101,6 +108,10 @@ pub const State = struct {
             std.debug.print("no map found\n", .{});
             std.debug.assert(false);
         }
+    }
+
+    pub fn goToMapMenu(self: *@This()) !void {
+        self.mode = .MENU;
     }
 
     pub fn goToNextMap(self: *@This()) !void {
@@ -138,7 +149,7 @@ pub const State = struct {
             4,
         );
 
-        if (nodeType == .WALKING or nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
+        if (nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
             numWalkingNodes = 1;
         }
 
@@ -150,10 +161,9 @@ pub const State = struct {
         newMap.nodes = List.init(self.allocator);
         newMap.nextMap = null;
 
-        // TODO: Deallocate maps and nodes
         for (0..numWalkingNodes) |i| {
             // Create new nodes for the map, assigning a name.
-            const st = try std.fmt.allocPrintZ(self.allocator, "Map node {d}", .{i});
+            const st = try std.fmt.allocPrintZ(self.allocator, "{d}", .{i});
 
             if (nodeType == .WALKING) {
                 var outsideNode: m.MapNode = .{
@@ -430,8 +440,18 @@ pub const State = struct {
             }
         }
 
-        if (self.stateMachine != null and self.stateMachine.?.state != null) {
-            try self.stateMachine.?.state.?.update(self);
+        if (self.mode != .MENU) {
+            if (self.stateMachine != null and self.stateMachine.?.state != null) {
+                try self.stateMachine.?.state.?.update(self);
+            }
+        }
+
+        if (self.mode == .MENU) {
+            if (self.mapMenu == null) {
+                std.debug.print("No map menu set\n", .{});
+                std.debug.assert(false);
+            }
+            self.mapMenu.?.draw(self);
         }
 
         const messageDisplayed = self.displayMessages(self.stateMsgDecay);

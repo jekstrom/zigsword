@@ -1,5 +1,6 @@
 const rl = @import("raylib");
 const ui = @import("raygui");
+const LoadFont = @import("raylib").loadFont;
 const std = @import("std");
 const s = @import("objects/state.zig");
 const Grid = @import("objects/grid.zig").Grid;
@@ -244,15 +245,19 @@ pub fn main() anyerror!void {
     // Set aside memory for player's name
     var newName: [10:0]u8 = std.mem.zeroes([10:0]u8);
 
+    const font = try LoadFont("resources/fonts/alagard.png");
+    defer rl.unloadFont(font);
+
     // Init state
     var state: s.State = .{
         .phase = .START,
-        .mode = .TUTORIAL,
+        .mode = .NONE,
         .turn = .ENVIRONMENT,
         .currentMap = 0,
         .currentNode = 0,
         .newName = &newName,
         .stateMachine = null,
+        .font = font,
         .player = .{
             .pos = .{ .x = 0, .y = 0 },
             .rotation = 180.0,
@@ -279,6 +284,7 @@ pub fn main() anyerror!void {
             .texture = map.get(.Adventurer).?,
         },
         .map = null,
+        .mapMenu = null,
         .mousePos = .{ .x = 0, .y = 0 },
         .textureMap = map,
         .grid = .{
@@ -310,9 +316,9 @@ pub fn main() anyerror!void {
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
 
-    // try state.generateNextMap("Dungeon 1", .DUNGEON);
-    // try state.generateNextMap("Boss 1", .BOSS);
-    // try state.generateNextMap("Shop 1", .SHOP);
+    try state.generateNextMap("Dungeon 1", .DUNGEON);
+    try state.generateNextMap("Boss 1", .BOSS);
+    try state.generateNextMap("Shop 1", .SHOP);
 
     // try state.generateNextMap("Dungeon 2", .DUNGEON);
     // try state.generateNextMap("Boss 2", .BOSS);
@@ -322,7 +328,7 @@ pub fn main() anyerror!void {
     // try state.generateNextMap("Boss 3", .BOSS);
     // try state.generateNextMap("Shop 3", .SHOP);
 
-    try state.generateNextMap("Ascend", .ASCEND);
+    // try state.generateNextMap("Ascend", .ASCEND);
 
     state.map.?.print();
     state.currentMap = state.map.?.currentMapCount;
@@ -365,6 +371,10 @@ pub fn main() anyerror!void {
     defer allocator.destroy(statemachine);
 
     state.stateMachine = statemachine;
+
+    const mapMenu = try allocator.create(@import("map/mapMenu.zig").MapMenu);
+    defer allocator.destroy(mapMenu);
+    state.mapMenu = mapMenu;
 
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
 
@@ -423,13 +433,11 @@ pub fn main() anyerror!void {
         // var entered = false;
         // var playerRotation: f32 = 180.0;
 
-        if (state.mode != .SHOP) {
-            state.player.pos.x = screenWidth / 2;
-            if (state.player.pos.y < groundY + 25) {
-                state.player.pos.y += 250 * dt;
-            }
-            state.mousePos = mousePos;
+        state.player.pos.x = screenWidth / 2;
+        if (state.player.pos.y < groundY + 25) {
+            state.player.pos.y += 250 * dt;
         }
+        state.mousePos = mousePos;
 
         if (state.player.durability <= 0) {
             // Game over
@@ -470,12 +478,16 @@ pub fn main() anyerror!void {
             try state.reset();
         }
 
+        if (ui.guiButton(.{ .x = 50, .y = 150, .height = 45, .width = 100 }, "Map") > 0) {
+            try state.goToMapMenu();
+        }
+
         if (state.mode == .ADVENTURERDEATH) {
             // Wait for next adventurer...
             generateAdventurer(&state);
             state.adventurer.nameKnown = true;
             state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
-            state.mode = .TUTORIAL;
+            state.mode = .NONE;
             state.phase = .START; // TODO: handle phases differently?
             state.tutorialStep = 0;
         }

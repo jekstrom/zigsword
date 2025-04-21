@@ -136,7 +136,11 @@ pub const KinRune = struct {
     }
 
     pub fn handle(ptr: *anyopaque, state: *s.State, rollResults: ?*std.ArrayList(RollResult)) !void {
-        if (rollResults == null) {
+        if (state.player.dice == null) {
+            return;
+        }
+
+        if (rollResults == null or state.player.dice.?.items.len >= state.player.maxDice) {
             return;
         }
 

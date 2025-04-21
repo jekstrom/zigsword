@@ -38,6 +38,7 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     const ascendBackground = try loadTexture("resources/ascend1.png");
     const ascendBossBackground = try loadTexture("resources/ascend_boss_bg.png");
     const menuBackground = try loadTexture("resources/menu_bg2.png");
+    const mapBackground = try loadTexture("resources/map.png");
 
     const swordIcon = try loadTexture("resources/sword_icon.png");
 
@@ -91,6 +92,7 @@ pub fn loadAndMapAllTextures(map: *std.AutoHashMap(enums.TextureType, rl.Texture
     try map.put(.ASCEND1BACKGROUND, ascendBackground);
     try map.put(.ASCENDBOSSBACKGROUND, ascendBossBackground);
     try map.put(.MENUBACKGROUND, menuBackground);
+    try map.put(.MAPBACKGROUND, mapBackground);
     try map.put(.GOODALTAR, goodAltar);
     try map.put(.EVILALTAR, evilAltar);
     try map.put(.TREASURECHEST, treasureChest);

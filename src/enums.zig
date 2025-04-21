@@ -14,6 +14,7 @@ pub const TextureType = enum(u8) {
     ASCEND1BACKGROUND,
     ASCENDBOSSBACKGROUND,
     MENUBACKGROUND,
+    MAPBACKGROUND,
     GOODALTAR,
     EVILALTAR,
     TREASURECHEST,
@@ -37,14 +38,9 @@ pub const GamePhase = enum(u8) {
 };
 
 pub const GameMode = enum(u8) {
-    TUTORIAL,
-    PAUSE,
-    WALKING,
-    BATTLE,
-    SHOP,
+    MENU,
     ADVENTURERDEATH,
-    DONE,
-    WAIT,
+    NONE,
 };
 
 pub const Turn = enum(u8) {

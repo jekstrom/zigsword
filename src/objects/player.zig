@@ -79,7 +79,6 @@ pub const Player = struct {
         while (dcount < numd6) : (dcount += 1) {
             xoffset = 50 * @as(f32, @floatFromInt(dcount));
             var d6 = try state.allocator.create(BasicDie);
-            defer state.allocator.destroy(d6);
             d6.name = "Basic d6";
             d6.sides = 6;
             d6.texture = state.textureMap.get(.D6);
@@ -102,7 +101,6 @@ pub const Player = struct {
         while (dcount < numd4) : (dcount += 1) {
             xoffset = 50 * @as(f32, @floatFromInt(dcount));
             var d4 = try state.allocator.create(MultDie);
-            defer state.allocator.destroy(d4);
             d4.name = "Mult d4";
             d4.sides = 4;
             d4.texture = state.textureMap.get(.D4);
@@ -258,6 +256,10 @@ pub const Player = struct {
             return false;
         }
         if (self.gold < shopItem.price) {
+            return false;
+        }
+
+        if (self.dice.?.items.len >= self.maxDice) {
             return false;
         }
 
