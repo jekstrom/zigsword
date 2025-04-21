@@ -65,7 +65,8 @@ Once you have restored enough memories, you can ascend and regain your human for
   * Gives the player more decisions to make
 * Endless mode?
     * instead of ascending once you have enough runes, you can skip it and keep going. Every 3 levels you get another opportunity to attempt ascending, but it gets harder each time.
-
+* sword breakers
+  * Special enemies/weapons that specifically target the player's durability
 
 # what is in a random event?
 * treasure  (consumables or gold)

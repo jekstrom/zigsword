@@ -310,9 +310,9 @@ pub fn main() anyerror!void {
     // Generate first maps
     try state.generateNextMap("Start", .WALKING);
 
-    try state.generateNextMap("Dungeon 1", .DUNGEON);
-    try state.generateNextMap("Boss 1", .BOSS);
-    try state.generateNextMap("Shop 1", .SHOP);
+    // try state.generateNextMap("Dungeon 1", .DUNGEON);
+    // try state.generateNextMap("Boss 1", .BOSS);
+    // try state.generateNextMap("Shop 1", .SHOP);
 
     // try state.generateNextMap("Dungeon 2", .DUNGEON);
     // try state.generateNextMap("Boss 2", .BOSS);
@@ -334,8 +334,6 @@ pub fn main() anyerror!void {
     state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
 
     // Keep track of new adventurer's dialog progress
-    var tutorialStep: u4 = 0;
-
     // Set up memory for player state
     state.player.altarHistory = AltarHistoryList.init(allocator);
     state.player.dice = DiceList.init(allocator);
@@ -344,15 +342,24 @@ pub fn main() anyerror!void {
 
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,
-        .tutorialStep = &tutorialStep,
+        .tutorialStep = &state.tutorialStep,
         .isComplete = false,
         .startTime = rl.getTime(),
     };
+
     const tutorialSmState: *SMState = try tutorialState.smState(&allocator);
+
+    var menuState: @import("states/menu.zig").MenuState = .{
+        .nextState = tutorialSmState,
+        .isComplete = false,
+        .startTime = rl.getTime(),
+    };
+
+    const menuSmState: *SMState = try menuState.smState(&allocator);
 
     var statemachine = try allocator.create(@import("states/stateMachine.zig").StateMachine);
     statemachine.allocator = &allocator;
-    statemachine.state = tutorialSmState;
+    statemachine.state = menuSmState;
     defer allocator.destroy(statemachine);
 
     state.stateMachine = statemachine;
@@ -375,7 +382,7 @@ pub fn main() anyerror!void {
         d6.hovered = false;
         d6.selected = false;
         d6.broken = false;
-        d6.breakChance = 99;
+        d6.breakChance = 0;
         d6.nextResult = 0;
         d6.index = dcount;
         d6.tooltip = tooltip;
@@ -398,7 +405,7 @@ pub fn main() anyerror!void {
         d4.hovered = false;
         d4.selected = false;
         d4.broken = false;
-        d4.breakChance = 5;
+        d4.breakChance = 50;
         d4.nextResult = 0;
         d4.index = dcount;
         d4.tooltip = tooltip;
@@ -412,35 +419,35 @@ pub fn main() anyerror!void {
     }
 
     // TEST RUNES
-    // var dawnRune: *DawnRune = try allocator.create(DawnRune);
-    // defer allocator.destroy(dawnRune);
-    // dawnRune.name = "Dawn";
-    // dawnRune.pos = .{
-    //     .x = state.grid.getWidth() - 250.0,
-    //     .y = state.grid.topUI() + 75.0,
-    // };
-    // const dr = try dawnRune.rune(&allocator);
-    // try state.player.runes.?.append(dr);
+    var dawnRune: *DawnRune = try allocator.create(DawnRune);
 
-    // var kinRune: *KinRune = try allocator.create(KinRune);
-    // defer allocator.destroy(kinRune);
-    // kinRune.name = "Kin";
-    // kinRune.pos = .{
-    //     .x = state.grid.getWidth() - 220.0,
-    //     .y = state.grid.topUI() + 75.0,
-    // };
-    // const kr = try kinRune.rune(&allocator);
-    // try state.player.runes.?.append(kr);
+    dawnRune.name = "Dawn";
+    dawnRune.pos = .{
+        .x = state.grid.getWidth() - 250.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const dr = try dawnRune.rune(&allocator);
+    try state.player.runes.?.append(dr);
 
-    // var fateRune: *FateRune = try allocator.create(FateRune);
-    // defer allocator.destroy(fateRune);
-    // fateRune.name = "Fate";
-    // fateRune.pos = .{
-    //     .x = state.grid.getWidth() - 190.0,
-    //     .y = state.grid.topUI() + 75.0,
-    // };
-    // const fr = try fateRune.rune(&allocator);
-    // try state.player.runes.?.append(fr);
+    var kinRune: *KinRune = try allocator.create(KinRune);
+
+    kinRune.name = "Kin";
+    kinRune.pos = .{
+        .x = state.grid.getWidth() - 220.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const kr = try kinRune.rune(&allocator);
+    try state.player.runes.?.append(kr);
+
+    var fateRune: *FateRune = try allocator.create(FateRune);
+
+    fateRune.name = "Fate";
+    fateRune.pos = .{
+        .x = state.grid.getWidth() - 190.0,
+        .y = state.grid.topUI() + 75.0,
+    };
+    const fr = try fateRune.rune(&allocator);
+    try state.player.runes.?.append(fr);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -487,23 +494,30 @@ pub fn main() anyerror!void {
         defer rl.endDrawing();
 
         rl.clearBackground(.white);
-        try state.drawCurrentMapNode(dt);
+
+        if (!state.isMenu()) {
+            try state.drawCurrentMapNode(dt);
+
+            _ = ui.guiDummyRec(
+                uiRect,
+                "",
+            );
+
+            if (ui.guiButton(.{ .x = 160, .y = 50, .height = 45, .width = 100 }, "Exit") > 0) {
+                break;
+            }
+
+            if (ui.guiButton(.{ .x = 160, .y = 100, .height = 45, .width = 100 }, "Add gold") > 0) {
+                state.player.gold += 100;
+            }
+        }
 
         if (ui.guiButton(.{ .x = 50, .y = 50, .height = 45, .width = 100 }, "DEBUG") > 0) {
             s.DEBUG_MODE = !s.DEBUG_MODE;
         }
 
-        _ = ui.guiDummyRec(
-            uiRect,
-            "",
-        );
-
-        if (ui.guiButton(.{ .x = 160, .y = 50, .height = 45, .width = 100 }, "Exit") > 0) {
-            break;
-        }
-
-        if (ui.guiButton(.{ .x = 160, .y = 100, .height = 45, .width = 100 }, "Add gold") > 0) {
-            state.player.gold += 100;
+        if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Menu") > 0) {
+            try state.reset();
         }
 
         if (state.mode == .ADVENTURERDEATH) {
@@ -513,10 +527,10 @@ pub fn main() anyerror!void {
             state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
             state.mode = .TUTORIAL;
             state.phase = .START; // TODO: handle phases differently?
-            tutorialStep = 0;
+            state.tutorialStep = 0;
         }
 
-        if (!state.player.equiped and state.phase == .START) {
+        if (!state.isMenu() and !state.player.equiped and state.phase == .START) {
             rl.drawText(
                 "   YOU",
                 @as(i32, @intFromFloat(state.player.pos.x + 20)),
@@ -528,26 +542,30 @@ pub fn main() anyerror!void {
 
         const currentMapNode = try state.getCurrentMapNode();
 
-        state.grid.draw(&state);
-        state.player.draw(&state);
-        if (state.adventurer.health > 0) {
-            state.adventurer.draw(&state);
-        }
+        if (!state.isMenu()) {
+            state.grid.draw(&state);
+            state.player.draw(&state);
+            if (state.adventurer.health > 0) {
+                state.adventurer.draw(&state);
+            }
 
-        try state.player.update(&state);
+            try state.player.update(&state);
 
-        if (currentMapNode) |cn| {
-            if (cn.monsters) |mobs| {
-                for (0..mobs.items.len) |i| {
-                    mobs.items[i].update(&state);
+            if (currentMapNode) |cn| {
+                if (cn.monsters) |mobs| {
+                    for (0..mobs.items.len) |i| {
+                        mobs.items[i].update(&state);
+                    }
                 }
             }
         }
-
         try currentMapNode.?.update(&state);
+
         try state.update();
 
-        try drawUi(&state, topUI);
+        if (!state.isMenu()) {
+            try drawUi(&state, topUI);
+        }
 
         if (s.DEBUG_MODE) {
             rl.drawFPS(

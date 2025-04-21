@@ -19,8 +19,10 @@ pub const StateMachine = struct {
     }
 
     pub fn clearState(self: *@This()) anyerror!void {
-        std.debug.print("CLEAR STATE {}\n", .{self.state.?.smType});
-        self.allocator.destroy(self.state.?);
-        self.state = null;
+        if (self.state != null) {
+            std.debug.print("CLEAR STATE {*}{}\n", .{ self.state.?, self.state.?.smType });
+            self.allocator.destroy(self.state.?);
+            self.state = null;
+        }
     }
 };

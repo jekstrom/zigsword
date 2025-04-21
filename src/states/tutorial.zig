@@ -5,7 +5,7 @@ const s = @import("../objects/state.zig");
 const sm = @import("smState.zig");
 const concatStrings = @import("../stringutils.zig").concatStrings;
 
-// Tracks behavior in the battle state
+// Tracks behavior in the starting state
 pub const TutorialState = struct {
     nextState: ?*sm.SMState,
     tutorialStep: *u4,

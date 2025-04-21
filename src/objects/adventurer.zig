@@ -11,6 +11,15 @@ pub const Adventurer = struct {
     health: u8,
     texture: rl.Texture,
 
+    pub fn reset(self: *@This(), state: *s.State) void {
+        self.name = "";
+        self.pos = .{ .x = 0, .y = 0 };
+        self.nameKnown = false;
+        self.speed = 0.95;
+        self.health = 100;
+        self.texture = state.textureMap.get(.Adventurer).?;
+    }
+
     pub fn entered(self: @This(), state: *s.State) bool {
         return self.pos.x >= state.grid.getGroundCenterPos().x;
     }

@@ -29,6 +29,43 @@ pub const Player = struct {
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
     runes: ?std.ArrayList(*Rune),
 
+    pub fn reset(self: *@This(), state: *s.State) !void {
+        self.pos = .{ .x = 0, .y = 0 };
+        self.rotation = 180.0;
+        self.equiped = false;
+        self.alignment = .GOOD;
+        self.blessed = false;
+        self.durability = 100;
+        self.gold = 0;
+        self.maxSelectedDice = 3;
+        self.maxDice = 6;
+
+        if (self.dice != null) {
+            for (0..self.dice.?.items.len) |i| {
+                const die = self.dice.?.items[i];
+                try die.deinit(state);
+                state.allocator.destroy(die);
+            }
+            self.dice.?.clearAndFree();
+        }
+
+        if (self.runes != null) {
+            for (0..self.runes.?.items.len) |i| {
+                const rune = self.runes.?.items[i];
+                state.allocator.destroy(rune);
+            }
+            self.dice.?.clearAndFree();
+        }
+
+        if (self.altarHistory != null) {
+            self.altarHistory.?.clearAndFree();
+        }
+
+        if (self.messages != null) {
+            self.messages.?.clearAndFree();
+        }
+    }
+
     pub fn deinit(self: *@This(), state: *s.State) !void {
         std.debug.print("PLAYER DEINIT\n\n", .{});
         if (self.altarHistory) |altarHistory| {
@@ -48,6 +85,10 @@ pub const Player = struct {
             msgs.deinit();
         }
         if (self.runes) |runes| {
+            for (0..runes.items.len) |i| {
+                var rune = runes.items[i];
+                try rune.deinit(state);
+            }
             runes.deinit();
         }
     }
@@ -127,7 +168,7 @@ pub const Player = struct {
         self.dice.?.deinit();
         self.dice = newDice;
 
-        var damageScaled = result;
+        var damageScaled = result + 100;
 
         if (self.blessed) {
             damageScaled *= 20;

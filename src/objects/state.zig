@@ -35,6 +35,56 @@ pub const State = struct {
     messages: ?std.ArrayList([:0]const u8),
     stateMachine: ?*@import("../states/stateMachine.zig").StateMachine,
     stateMsgDecay: u8 = 255,
+    tutorialStep: u4 = 0,
+
+    pub fn reset(self: *@This()) !void {
+        // Reset after game end.
+        std.debug.print("Reset game\n", .{});
+        self.phase = .START;
+        self.mode = .TUTORIAL;
+        self.turn = .ENVIRONMENT;
+        self.currentMap = 0;
+        self.currentNode = 0;
+
+        self.tutorialStep = 0;
+
+        if (self.map != null) {
+            try self.map.?.deinitAll(self);
+        }
+        self.map = null;
+
+        try self.stateMachine.?.clearState();
+
+        // TODO: Player selection screen
+        try self.player.reset(self);
+
+        // TODO: Generate a new random adventurer.
+        self.adventurer.reset(self);
+
+        try self.generateNextMap("Start", .WALKING);
+
+        var tutorialState = try self.allocator.create(@import("../states/tutorial.zig").TutorialState);
+        defer self.allocator.destroy(tutorialState);
+        tutorialState.nextState = null;
+        tutorialState.isComplete = false;
+        tutorialState.tutorialStep = &self.tutorialStep;
+        tutorialState.startTime = rl.getTime();
+
+        const tutorialSmState: *sm.SMState = try tutorialState.smState(&self.allocator);
+
+        var menuState = try self.allocator.create(@import("../states/menu.zig").MenuState);
+        defer self.allocator.destroy(menuState);
+        menuState.nextState = tutorialSmState;
+        menuState.isComplete = false;
+        menuState.startTime = rl.getTime();
+
+        const menuSmState: *sm.SMState = try menuState.smState(&self.allocator);
+        try self.stateMachine.?.setState(menuSmState, self);
+    }
+
+    pub fn isMenu(self: @This()) bool {
+        return self.stateMachine != null and self.stateMachine.?.state != null and self.stateMachine.?.state.?.smType == .MENU;
+    }
 
     pub fn goToNextMapNode(self: *@This()) !void {
         if (self.map) |map| {
@@ -88,7 +138,7 @@ pub const State = struct {
             4,
         );
 
-        if (nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
+        if (nodeType == .WALKING or nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
             numWalkingNodes = 1;
         }
 
@@ -310,6 +360,7 @@ pub const State = struct {
     }
 
     pub fn update(self: *@This()) !void {
+        // std.debug.print("State: {*}, State complete: {},\n", .{ self.stateMachine.?.state.?, try self.stateMachine.?.state.?.getIsComplete() });
         if (self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
             // do state transition
             std.debug.print("STATE COMPLETE\n\n", .{});
@@ -318,8 +369,7 @@ pub const State = struct {
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
 
             if (curState.smType == .GAMEEND) {
-                self.phase = .START;
-                rl.closeWindow();
+                try self.reset();
                 return;
             }
 
