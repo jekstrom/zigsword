@@ -340,6 +340,8 @@ pub fn main() anyerror!void {
     state.player.runes = RuneList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
 
+    try state.player.reset(&state);
+
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,
         .tutorialStep = &state.tutorialStep,
@@ -365,58 +367,6 @@ pub fn main() anyerror!void {
     state.stateMachine = statemachine;
 
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
-
-    // Add initial player dice
-    var dcount: u8 = 0;
-    const numd6: u8 = 2;
-    const numd4: u8 = 4 + numd6;
-    var xoffset: f32 = 50.0;
-    const tooltip = "";
-    while (dcount < numd6) : (dcount += 1) {
-        xoffset = 50 * @as(f32, @floatFromInt(dcount));
-        var d6 = try state.allocator.create(BasicDie);
-        defer state.allocator.destroy(d6);
-        d6.name = "Basic d6";
-        d6.sides = 6;
-        d6.texture = state.textureMap.get(.D6);
-        d6.hovered = false;
-        d6.selected = false;
-        d6.broken = false;
-        d6.breakChance = 0;
-        d6.nextResult = 0;
-        d6.index = dcount;
-        d6.tooltip = tooltip;
-        d6.pos = .{
-            .x = state.grid.getWidth() - 550 + xoffset,
-            .y = topUI + 10,
-        };
-        const d6die = try d6.die(&state.allocator);
-
-        try state.player.dice.?.append(d6die);
-    }
-    xoffset += 50;
-    while (dcount < numd4) : (dcount += 1) {
-        xoffset = 50 * @as(f32, @floatFromInt(dcount));
-        var d4 = try state.allocator.create(MultDie);
-        defer state.allocator.destroy(d4);
-        d4.name = "Mult d4";
-        d4.sides = 4;
-        d4.texture = state.textureMap.get(.D4);
-        d4.hovered = false;
-        d4.selected = false;
-        d4.broken = false;
-        d4.breakChance = 50;
-        d4.nextResult = 0;
-        d4.index = dcount;
-        d4.tooltip = tooltip;
-        d4.pos = .{
-            .x = state.grid.getWidth() - 550 + xoffset,
-            .y = topUI + 10,
-        };
-        const d4die = try d4.die(&state.allocator);
-
-        try state.player.dice.?.append(d4die);
-    }
 
     // TEST RUNES
     var dawnRune: *DawnRune = try allocator.create(DawnRune);
@@ -516,7 +466,7 @@ pub fn main() anyerror!void {
             s.DEBUG_MODE = !s.DEBUG_MODE;
         }
 
-        if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Menu") > 0) {
+        if (ui.guiButton(.{ .x = 50, .y = 100, .height = 45, .width = 100 }, "Menu") > 0) {
             try state.reset();
         }
 
