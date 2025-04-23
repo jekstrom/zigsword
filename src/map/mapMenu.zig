@@ -6,7 +6,89 @@ const Map = @import("map.zig").Map;
 const std = @import("std");
 
 pub const MapMenu = struct {
-    pub fn draw(self: *@This(), state: *s.State) void {
+    const TreeSide = enum(u8) {
+        left,
+        right,
+        center,
+    };
+
+    fn drawTree(map: ?*Map, it: *i32, state: *s.State, center: rl.Vector2, side: TreeSide) !void {
+        if (map == null) {
+            return;
+        }
+        const yoffset = 130;
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        const allocator = arena.allocator();
+        var List = std.ArrayList(?*Map).init(allocator);
+
+        try List.append(map);
+        var currentMap = map;
+
+        while (currentMap != null) : (currentMap = List.orderedRemove(0)) {
+            try List.append(currentMap.?.left);
+            try List.append(currentMap.?.right);
+
+            const txtSize = rl.measureTextEx(state.font, currentMap.?.name, 50, 2);
+
+            var txtPos: rl.Vector2 = .{
+                .x = center.x - txtSize.x / 2,
+                .y = center.y - (txtSize.y / 2) - 200.0 + @as(f32, @floatFromInt(yoffset * it.*)),
+            };
+
+            if (side == .right) {
+                txtPos = txtPos.add(.{
+                    .x = -150,
+                    .y = 0,
+                });
+            } else if (side == .left) {
+                txtPos = txtPos.add(.{
+                    .x = 150,
+                    .y = 0,
+                });
+            }
+
+            rl.drawTextPro(
+                state.font,
+                currentMap.?.name,
+                txtPos,
+                .{ .x = 0, .y = 0 },
+                0.0,
+                50,
+                2,
+                .white,
+            );
+
+            const mid: f32 = -@as(f32, @floatFromInt(currentMap.?.nodes.items.len - 1)) / 2;
+            for (0.., currentMap.?.nodes.items) |i, node| {
+                const mapCirclePos: rl.Vector2 = .{
+                    .x = txtPos.x + (txtSize.x / 2) + (mid + @as(f32, @floatFromInt(i))) * 100.0,
+                    .y = txtPos.y + 70,
+                };
+
+                if (i < currentMap.?.nodes.items.len - 1) {
+                    rl.drawLineEx(
+                        mapCirclePos,
+                        mapCirclePos.add(.{
+                            .x = 100,
+                            .y = 0,
+                        }),
+                        5.0,
+                        .white,
+                    );
+                }
+
+                drawNode(node, mapCirclePos, state.currentNode == i and state.currentMap == currentMap.?.currentMapCount, state);
+            }
+
+            it.* += 1;
+        }
+
+        // drawTree(map.?.right, it, state, center, .right);
+        // drawTree(map.?.left, it, state, center, .left);
+    }
+
+    pub fn draw(self: *@This(), state: *s.State) !void {
         _ = self;
         const center = state.grid.getCenterPos();
 
@@ -30,7 +112,7 @@ pub const MapMenu = struct {
         );
 
         // show current map nodes in a tree
-        // TODO: change map into a tree structure
+
         // traverse the tree and display each map and each map's nodes (up to fog of war)
         // default fog of war should be one map away
         // - possibility i add in ability to see further out as a powerup
@@ -38,54 +120,9 @@ pub const MapMenu = struct {
             return;
         }
 
-        var currentMap: ?*Map = &state.map.?;
-        const yoffset = 130;
+        const currentMap: ?*Map = &state.map.?;
         var it: i32 = 0;
-
-        while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
-            const cm = currentMap.?;
-            const txtSize = rl.measureTextEx(state.font, cm.name, 50, 2);
-
-            const txtPos: rl.Vector2 = .{
-                .x = center.x - txtSize.x / 2,
-                .y = center.y - (txtSize.y / 2) - 200.0 + @as(f32, @floatFromInt(yoffset * it)),
-            };
-
-            rl.drawTextPro(
-                state.font,
-                cm.name,
-                txtPos,
-                .{ .x = 0, .y = 0 },
-                0.0,
-                50,
-                2,
-                .white,
-            );
-
-            const mid: f32 = -@as(f32, @floatFromInt(cm.nodes.items.len - 1)) / 2;
-            for (0.., cm.nodes.items) |i, node| {
-                const mapCirclePos: rl.Vector2 = .{
-                    .x = txtPos.x + (txtSize.x / 2) + (mid + @as(f32, @floatFromInt(i))) * 100.0,
-                    .y = txtPos.y + 70,
-                };
-
-                if (i < cm.nodes.items.len - 1) {
-                    rl.drawLineEx(
-                        mapCirclePos,
-                        mapCirclePos.add(.{
-                            .x = 100,
-                            .y = 0,
-                        }),
-                        5.0,
-                        .white,
-                    );
-                }
-
-                drawNode(node, mapCirclePos, state.currentNode == i and state.currentMap == cm.currentMapCount, state);
-            }
-
-            it += 1;
-        }
+        try drawTree(currentMap, &it, state, center, .center);
 
         // adventurer automatically will chose which node to go to next
 
@@ -124,7 +161,7 @@ pub const MapMenu = struct {
 
         const txtPos: rl.Vector2 = .{
             .x = mapCirclePos.x - txtSize.x / 2,
-            .y = mapCirclePos.y - (txtSize.y / 2) + 50.0,
+            .y = mapCirclePos.y - (txtSize.y / 2) + 30.0,
         };
 
         rl.drawTextPro(
@@ -137,5 +174,32 @@ pub const MapMenu = struct {
             spacing,
             .white,
         );
+
+        if (node.event) |evt| {
+            _ = evt;
+            rl.drawTextPro(
+                state.font,
+                "e",
+                mapCirclePos.add(.{ .x = -5, .y = -10 }),
+                .{ .x = 0, .y = 0 },
+                0.0,
+                20,
+                spacing,
+                .black,
+            );
+        } else if (node.monsters) |monsters| {
+            if (monsters.items.len > 0) {
+                rl.drawTextPro(
+                    state.font,
+                    "m",
+                    mapCirclePos.add(.{ .x = -7, .y = -10 }),
+                    .{ .x = 0, .y = 0 },
+                    0.0,
+                    20,
+                    spacing,
+                    .black,
+                );
+            }
+        }
     }
 };

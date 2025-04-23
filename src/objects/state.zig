@@ -119,8 +119,15 @@ pub const State = struct {
             return;
         }
 
-        if (self.map.?.nextMap) |nm| {
-            std.debug.print("Going to map {s}\n", .{nm.name});
+        if (self.map.?.right) |nm| {
+            std.debug.print("Going to right map {s}\n", .{nm.name});
+            try self.map.?.deinit(self);
+            self.map = nm.*;
+            self.currentMap = self.map.?.currentMapCount;
+            self.currentNode = 0;
+            self.grid.clearTextures();
+        } else if (self.map.?.left) |nm| {
+            std.debug.print("Going to left map {s}\n", .{nm.name});
             try self.map.?.deinit(self);
             self.map = nm.*;
             self.currentMap = self.map.?.currentMapCount;
@@ -159,7 +166,8 @@ pub const State = struct {
         newMap.currentMapCount = 1;
         newMap.name = name;
         newMap.nodes = List.init(self.allocator);
-        newMap.nextMap = null;
+        newMap.left = null;
+        newMap.right = null;
 
         for (0..numWalkingNodes) |i| {
             // Create new nodes for the map, assigning a name.
@@ -254,21 +262,31 @@ pub const State = struct {
 
         if (self.map) |_| {
             // try state.map.?.addMap(state, "", newMap.nodes);
+            //TODO append new node on proper leafn
             var currentMap: ?*m.Map = &self.map.?;
             while (currentMap != null) {
                 newMap.currentMapCount = currentMap.?.currentMapCount + 1;
                 std.debug.print("Current map: {s}\n", .{currentMap.?.name});
-                if (currentMap.?.nextMap == null) {
-                    std.debug.print("next map null\n", .{});
+                if (currentMap.?.right == null and currentMap.?.left == null) {
+                    std.debug.print("next maps null\n", .{});
                     break;
                 } else {
-                    currentMap = currentMap.?.nextMap;
+                    if (currentMap.?.right != null and currentMap.?.left != null) {
+                        currentMap = currentMap.?.right;
+                    } else {
+                        break;
+                    }
                     std.debug.print("next map: {s}\n", .{currentMap.?.name});
                 }
             }
-            std.debug.print("Adding next map {s} as child to {s}\n", .{ newMap.name, currentMap.?.name });
 
-            currentMap.?.nextMap = newMap;
+            if (currentMap.?.right != null) {
+                std.debug.print("Adding next map {s} as left child to {s}\n", .{ newMap.name, currentMap.?.name });
+                currentMap.?.left = newMap;
+            } else {
+                std.debug.print("Adding next map {s} as right child to {s}\n", .{ newMap.name, currentMap.?.name });
+                currentMap.?.right = newMap;
+            }
         } else {
             newMap.currentMapCount = 1;
             self.map = newMap.*;
@@ -451,7 +469,7 @@ pub const State = struct {
                 std.debug.print("No map menu set\n", .{});
                 std.debug.assert(false);
             }
-            self.mapMenu.?.draw(self);
+            try self.mapMenu.?.draw(self);
         }
 
         const messageDisplayed = self.displayMessages(self.stateMsgDecay);

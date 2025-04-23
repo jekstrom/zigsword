@@ -317,6 +317,7 @@ pub fn main() anyerror!void {
     try state.generateNextMap("Start", .WALKING);
 
     try state.generateNextMap("Dungeon 1", .DUNGEON);
+    try state.generateNextMap("Dungeon 2", .DUNGEON);
     try state.generateNextMap("Boss 1", .BOSS);
     try state.generateNextMap("Shop 1", .SHOP);
 

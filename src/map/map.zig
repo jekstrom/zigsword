@@ -630,13 +630,8 @@ pub const Map = struct {
     name: [:0]const u8,
     currentMapCount: u8,
     nodes: std.ArrayList(MapNode),
-    nextMap: ?*Map,
-
-    pub fn draw(self: *@This(), state: *s.State) !void {
-        _ = self;
-        _ = state;
-        // TODO: Draw map screen
-    }
+    right: ?*Map,
+    left: ?*Map,
 
     pub fn addMap(self: @This(), state: *s.State, name: [:0]const u8, nodes: std.ArrayList(MapNode)) !void {
         var newMap = try state.allocator.create(Map);
@@ -645,7 +640,11 @@ pub const Map = struct {
         newMap.name = name;
         newMap.nodes = nodes;
 
-        self.nextMap = newMap;
+        if (self.right != null) {
+            self.left = newMap;
+        } else {
+            self.right = newMap;
+        }
     }
 
     pub fn addMapNode(self: *@This(), node: MapNode) !void {
@@ -655,18 +654,49 @@ pub const Map = struct {
     pub fn traverse(self: *@This(), callback: fn (?*Map) void) void {
         var currentMap: ?*Map = self;
 
-        while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
-            callback(currentMap);
+        if (currentMap == null) {
+            return;
         }
+
+        callback(currentMap);
+
+        if (currentMap.?.right != null) {
+            currentMap.?.right.?.traverse(callback);
+        }
+
+        if (currentMap.?.left != null) {
+            currentMap.?.left.?.traverse(callback);
+        }
+
+        // while (currentMap != null) : (currentMap = currentMap.?.right) {
+        //     callback(currentMap);
+        //     currentMap.?.right.traverse(callback);
+        //     currentMap.?.left.traverse(callback);
+        // }
     }
 
     pub fn deinitAll(self: *@This(), state: *s.State) !void {
         var currentMap: ?*Map = self;
 
-        while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
-            std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
-            try currentMap.?.deinit(state);
+        if (currentMap == null) {
+            return;
         }
+
+        std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
+        try currentMap.?.deinit(state);
+
+        if (currentMap.?.right != null) {
+            try currentMap.?.right.?.deinitAll(state);
+        }
+
+        if (currentMap.?.left != null) {
+            try currentMap.?.left.?.deinitAll(state);
+        }
+
+        // while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
+        //     std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
+        //     try currentMap.?.deinit(state);
+        // }
     }
 
     pub fn deinit(self: *@This(), state: *s.State) !void {
