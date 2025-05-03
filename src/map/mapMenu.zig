@@ -12,7 +12,116 @@ pub const MapMenu = struct {
         center,
     };
 
-    fn drawTree(map: ?*Map, it: *i32, state: *s.State, center: rl.Vector2, side: TreeSide) !void {
+    fn oddLevel(it: i32) f32 {
+        const isOdd = (-1 * @as(f32, @floatFromInt(@mod(it, 2))));
+        if (isOdd != 0) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
+
+    fn firstLevel(depth: f32) f32 {
+        if (depth == 0.0) {
+            return 0.0;
+        } else {
+            return 1.0;
+        }
+    }
+
+    fn drawMap(map: *Map, parentPos: ?rl.Vector2, state: *s.State, depth: f32, side: TreeSide) rl.Vector2 {
+        const yoffset = 130.0;
+        const center = state.grid.getCenterPos();
+        const txtSize = rl.measureTextEx(state.font, map.name, 50, 2);
+
+        var txtPos: rl.Vector2 = .{
+            .x = 0,
+            .y = center.y - (txtSize.y / 2) - 200 + yoffset * depth,
+        };
+
+        if (side == .center) {
+            txtPos = txtPos.add(.{
+                .x = center.x - (txtSize.x / 2),
+                .y = 0,
+            });
+        }
+        if (parentPos != null) {
+            if (side == .left) {
+                txtPos = txtPos.add(.{
+                    .x = parentPos.?.x - @max(txtSize.x, ((@as(f32, @floatFromInt(map.nodes.items.len)) * 100) / 2)),
+                    .y = 0,
+                });
+            } else if (side == .right) {
+                txtPos = txtPos.add(.{
+                    .x = parentPos.?.x + @max(txtSize.x, ((@as(f32, @floatFromInt(map.nodes.items.len)) * 100) / 2)),
+                    .y = 0,
+                });
+            }
+        }
+
+        rl.drawTextPro(
+            state.font,
+            map.name,
+            txtPos,
+            .{ .x = txtSize.x / 2, .y = 0 },
+            0.0,
+            50,
+            2,
+            .white,
+        );
+
+        rl.drawCircleV(
+            txtPos,
+            5.0,
+            .magenta,
+        );
+
+        if (parentPos != null) {
+            rl.drawCircleV(
+                parentPos.?,
+                5.0,
+                .red,
+            );
+        }
+
+        const mid: f32 = -@as(f32, @floatFromInt(map.nodes.items.len - 1)) / 2;
+        for (0.., map.nodes.items) |i, node| {
+            const mapCirclePos: rl.Vector2 = .{
+                .x = txtPos.x + (mid + @as(f32, @floatFromInt(i))) * 75.0,
+                .y = txtPos.y + 70,
+            };
+
+            if (i < map.nodes.items.len - 1) {
+                rl.drawLineEx(
+                    mapCirclePos,
+                    mapCirclePos.add(.{
+                        .x = 75,
+                        .y = 0,
+                    }),
+                    5.0,
+                    .white,
+                );
+            }
+
+            drawNode(node, mapCirclePos, state.currentNode == i and state.currentMap == map.currentMapCount, state);
+        }
+
+        return txtPos;
+    }
+
+    // Recursively draw three nodes centered on the previous node
+    fn drawThree(map: *Map, parent: ?rl.Vector2, state: *s.State, depth: f32, side: TreeSide) void {
+        const parentPos = drawMap(map, parent, state, depth, side);
+
+        if (map.left != null) {
+            drawThree(map.left.?, parentPos, state, depth + 1, .left);
+        }
+        if (map.right != null) {
+            drawThree(map.right.?, parentPos, state, depth + 1, .right);
+        }
+    }
+
+    fn drawTree(map: ?*Map, state: *s.State, center: rl.Vector2, side: TreeSide) !void {
         if (map == null) {
             return;
         }
@@ -21,8 +130,9 @@ pub const MapMenu = struct {
         defer arena.deinit();
         const allocator = arena.allocator();
         var List = std.ArrayList(?*Map).init(allocator);
+        var depth: u32 = 0;
+        var it: i32 = 1;
 
-        try List.append(map);
         var currentMap = map;
 
         while (currentMap != null) : (currentMap = List.orderedRemove(0)) {
@@ -30,10 +140,11 @@ pub const MapMenu = struct {
             try List.append(currentMap.?.right);
 
             const txtSize = rl.measureTextEx(state.font, currentMap.?.name, 50, 2);
+            const centerx = center.x;
 
             var txtPos: rl.Vector2 = .{
-                .x = center.x - txtSize.x / 2,
-                .y = center.y - (txtSize.y / 2) - 200.0 + @as(f32, @floatFromInt(yoffset * it.*)),
+                .x = centerx - (txtSize.x / 2) + (firstLevel(depth) * (-((((txtSize.x + center.x)) * oddLevel(it)) / @as(f32, @floatFromInt(depth + 1))) / @as(f32, @floatFromInt(depth + 1)))),
+                .y = center.y - (txtSize.y / 2) - 200 + @as(f32, @floatFromInt(yoffset * depth)),
             };
 
             if (side == .right) {
@@ -81,7 +192,8 @@ pub const MapMenu = struct {
                 drawNode(node, mapCirclePos, state.currentNode == i and state.currentMap == currentMap.?.currentMapCount, state);
             }
 
-            it.* += 1;
+            it += 1;
+            depth = @as(u32, @intFromFloat(@log2(@as(f32, @floatFromInt(it)))));
         }
 
         // drawTree(map.?.right, it, state, center, .right);
@@ -90,8 +202,6 @@ pub const MapMenu = struct {
 
     pub fn draw(self: *@This(), state: *s.State) !void {
         _ = self;
-        const center = state.grid.getCenterPos();
-
         rl.drawTexturePro(
             state.textureMap.get(.MAPBACKGROUND).?,
             .{
@@ -121,8 +231,8 @@ pub const MapMenu = struct {
         }
 
         const currentMap: ?*Map = &state.map.?;
-        var it: i32 = 0;
-        try drawTree(currentMap, &it, state, center, .center);
+
+        drawThree(currentMap.?, null, state, 0.0, .center);
 
         // adventurer automatically will chose which node to go to next
 

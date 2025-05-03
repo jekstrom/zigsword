@@ -261,31 +261,39 @@ pub const State = struct {
         }
 
         if (self.map) |_| {
-            // try state.map.?.addMap(state, "", newMap.nodes);
-            //TODO append new node on proper leafn
+            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            defer arena.deinit();
+            const allocator = arena.allocator();
+            var mapqueue = std.ArrayList(?*m.Map).init(allocator);
+
             var currentMap: ?*m.Map = &self.map.?;
-            while (currentMap != null) {
-                newMap.currentMapCount = currentMap.?.currentMapCount + 1;
-                std.debug.print("Current map: {s}\n", .{currentMap.?.name});
-                if (currentMap.?.right == null and currentMap.?.left == null) {
-                    std.debug.print("next maps null\n", .{});
+
+            while (currentMap != null) : (currentMap = mapqueue.orderedRemove(0)) {
+                std.debug.print("current: {s}\n", .{currentMap.?.name});
+
+                if (currentMap.?.left == null or currentMap.?.right == null) {
                     break;
-                } else {
-                    if (currentMap.?.right != null and currentMap.?.left != null) {
-                        currentMap = currentMap.?.right;
-                    } else {
-                        break;
-                    }
-                    std.debug.print("next map: {s}\n", .{currentMap.?.name});
                 }
+
+                if (currentMap.?.left) |l| {
+                    std.debug.print("left: {s}\n", .{l.name});
+                }
+                if (currentMap.?.right) |r| {
+                    std.debug.print("right: {s}\n", .{r.name});
+                }
+                try mapqueue.append(currentMap.?.left);
+                try mapqueue.append(currentMap.?.right);
             }
 
-            if (currentMap.?.right != null) {
+            if (currentMap.?.right == null) {
+                std.debug.print("Adding next map {s} as right child to {s}\n", .{ newMap.name, currentMap.?.name });
+                currentMap.?.right = newMap;
+            } else if (currentMap.?.left == null) {
                 std.debug.print("Adding next map {s} as left child to {s}\n", .{ newMap.name, currentMap.?.name });
                 currentMap.?.left = newMap;
             } else {
-                std.debug.print("Adding next map {s} as right child to {s}\n", .{ newMap.name, currentMap.?.name });
-                currentMap.?.right = newMap;
+                std.debug.print("cannot add next map to {s}\n", .{currentMap.?.name});
+                std.debug.assert(false);
             }
         } else {
             newMap.currentMapCount = 1;

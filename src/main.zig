@@ -421,7 +421,7 @@ pub fn main() anyerror!void {
         const dt = rl.getFrameTime();
         const mousePos = rl.getMousePosition();
 
-        if (gameTime > 300) {
+        if (gameTime > 3000) {
             std.debug.print("resetting game. current state: {}\n", .{state.phase});
             break;
         }
