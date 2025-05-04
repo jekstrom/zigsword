@@ -37,7 +37,7 @@ pub const MapNode = struct {
     }
 
     pub fn deinit(self: *@This(), state: *s.State) !void {
-        std.debug.print("DEINIT NODE {}\n", .{self.type});
+        std.debug.print("DEINIT NODE {} {s}\n", .{ self.type, self.name });
         if (self.monsters) |monsters| {
             for (0..monsters.items.len) |i| {
                 try monsters.items[i].deinit(state);
@@ -667,12 +667,6 @@ pub const Map = struct {
         if (currentMap.?.left != null) {
             currentMap.?.left.?.traverse(callback);
         }
-
-        // while (currentMap != null) : (currentMap = currentMap.?.right) {
-        //     callback(currentMap);
-        //     currentMap.?.right.traverse(callback);
-        //     currentMap.?.left.traverse(callback);
-        // }
     }
 
     pub fn deinitAll(self: *@This(), state: *s.State) !void {
@@ -681,8 +675,6 @@ pub const Map = struct {
         if (currentMap == null) {
             return;
         }
-
-        std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
         try currentMap.?.deinit(state);
 
         if (currentMap.?.right != null) {
@@ -692,11 +684,6 @@ pub const Map = struct {
         if (currentMap.?.left != null) {
             try currentMap.?.left.?.deinitAll(state);
         }
-
-        // while (currentMap != null) : (currentMap = currentMap.?.nextMap) {
-        //     std.debug.print("Deinit map {s}\n", .{currentMap.?.name});
-        //     try currentMap.?.deinit(state);
-        // }
     }
 
     pub fn deinit(self: *@This(), state: *s.State) !void {

@@ -12,6 +12,7 @@ pub const SMStateType = enum(u8) {
     ADVENTURERDEATH,
     GAMEEND,
     MENU,
+    MAPMENU,
 };
 
 // Interface for state machine states

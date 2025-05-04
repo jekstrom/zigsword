@@ -10,6 +10,7 @@ pub const Adventurer = struct {
     speed: f32,
     health: u8,
     texture: rl.Texture,
+    nextMap: enums.MapSide,
 
     pub fn reset(self: *@This(), state: *s.State) void {
         self.name = "";
@@ -18,6 +19,20 @@ pub const Adventurer = struct {
         self.speed = 0.95;
         self.health = 100;
         self.texture = state.textureMap.get(.Adventurer).?;
+        self.chooseNextMap(state);
+    }
+
+    pub fn chooseNextMap(self: *@This(), state: *s.State) void {
+        const mapRand = state.rand.intRangeAtMost(usize, 0, 1);
+        if (mapRand == 0) {
+            self.nextMap = .left;
+            std.debug.print("Setting selected map to {d}\n", .{state.map.?.left.?.currentMapCount});
+            state.selectedMap = state.map.?.left.?.currentMapCount;
+        } else {
+            self.nextMap = .right;
+            std.debug.print("Setting selected map to {d}\n", .{state.map.?.right.?.currentMapCount});
+            state.selectedMap = state.map.?.right.?.currentMapCount;
+        }
     }
 
     pub fn entered(self: @This(), state: *s.State) bool {

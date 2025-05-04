@@ -54,3 +54,9 @@ pub const Alignment = enum(u8) {
     GOOD,
     EVIL,
 };
+
+pub const MapSide = enum(u8) {
+    left,
+    right,
+    center,
+};

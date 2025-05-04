@@ -188,14 +188,16 @@ pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
 }
 
 pub fn generateAdventurer(state: *s.State) void {
-    const adventurer: Adventurer = .{
+    var adventurer: Adventurer = .{
         .health = 100,
         .name = "Bob",
         .nameKnown = true,
         .speed = 0.90,
         .pos = .{ .x = 0, .y = 0 },
         .texture = state.textureMap.get(.Adventurer).?,
+        .nextMap = .center,
     };
+    adventurer.chooseNextMap(state);
     state.adventurer = adventurer;
 }
 
@@ -255,6 +257,9 @@ pub fn main() anyerror!void {
         .turn = .ENVIRONMENT,
         .currentMap = 0,
         .currentNode = 0,
+        .selectedMap = 0,
+        .mapMenuInputActive = false,
+        .mapCount = 0,
         .newName = &newName,
         .stateMachine = null,
         .font = font,
@@ -282,9 +287,9 @@ pub fn main() anyerror!void {
             .speed = 0.95,
             .health = 100,
             .texture = map.get(.Adventurer).?,
+            .nextMap = .left,
         },
         .map = null,
-        .mapMenu = null,
         .mousePos = .{ .x = 0, .y = 0 },
         .textureMap = map,
         .grid = .{
@@ -373,10 +378,6 @@ pub fn main() anyerror!void {
 
     state.stateMachine = statemachine;
 
-    const mapMenu = try allocator.create(@import("map/mapMenu.zig").MapMenu);
-    defer allocator.destroy(mapMenu);
-    state.mapMenu = mapMenu;
-
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
 
     // TEST RUNES
@@ -409,6 +410,8 @@ pub fn main() anyerror!void {
     };
     const fr = try fateRune.rune(&allocator);
     try state.player.runes.?.append(fr);
+
+    state.adventurer.reset(&state);
 
     rl.setTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -479,9 +482,9 @@ pub fn main() anyerror!void {
             try state.reset();
         }
 
-        if (ui.guiButton(.{ .x = 50, .y = 150, .height = 45, .width = 100 }, "Map") > 0) {
-            try state.goToMapMenu();
-        }
+        // if (ui.guiButton(.{ .x = 50, .y = 150, .height = 45, .width = 100 }, "Map") > 0) {
+        //     state.goToMapMenu();
+        // }
 
         if (state.mode == .ADVENTURERDEATH) {
             // Wait for next adventurer...
@@ -526,7 +529,7 @@ pub fn main() anyerror!void {
 
         try state.update();
 
-        if (!state.isMenu()) {
+        if (!state.isMenu() and !state.isMapMenu()) {
             try drawUi(&state, topUI);
         }
 
