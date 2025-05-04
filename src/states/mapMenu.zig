@@ -112,7 +112,7 @@ pub const MapMenuState = struct {
 
         if (side == .center) {
             txtPos = txtPos.add(.{
-                .x = center.x - (txtSize.x / 2),
+                .x = center.x,
                 .y = 0,
             });
         }
@@ -185,6 +185,11 @@ pub const MapMenuState = struct {
                     .red,
                 );
             }
+        }
+
+        if (s.DEBUG_MODE) {
+            rl.drawCircleV(txtPos, 3.0, .magenta);
+            rl.drawRectangleRec(collisionRect, .magenta);
         }
 
         rl.drawTextPro(

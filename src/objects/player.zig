@@ -250,16 +250,18 @@ pub const Player = struct {
         try self.dice.?.append(die);
     }
 
-    pub fn purchaseItem(self: *@This(), shopItem: shop.ShopItem) !bool {
+    pub fn purchaseItem(self: *@This(), shopItem: shop.ShopItem, state: *s.State) !bool {
         if (self.dice == null) {
             std.debug.assert(false);
             return false;
         }
         if (self.gold < shopItem.price) {
+            try state.messages.?.append("Not enough gold");
             return false;
         }
 
         if (self.dice.?.items.len >= self.maxDice) {
+            try state.messages.?.append("No room");
             return false;
         }
 

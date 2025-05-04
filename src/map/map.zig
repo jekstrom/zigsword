@@ -436,11 +436,10 @@ pub const MapNode = struct {
                 if (rl.isMouseButtonPressed(rl.MouseButton.left) and hover) {
                     const lastDieIndex = state.player.dice.?.items.len;
                     item.die.?.index = lastDieIndex;
-                    const purchased = try state.player.purchaseItem(item.*);
+
+                    const purchased = try state.player.purchaseItem(item.*, state);
                     if (purchased) {
                         item.purchased = true;
-                    } else {
-                        try state.messages.?.append("Not enough gold");
                     }
                 }
             }
