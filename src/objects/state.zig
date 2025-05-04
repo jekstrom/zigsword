@@ -127,9 +127,11 @@ pub const State = struct {
         }
 
         const selected = self.selectedMap;
+        std.debug.print("Going to selected map {d}\n", .{selected});
 
         if (self.map.?.right != null) {
             const right = self.map.?.right.?;
+            std.debug.print("Checking right map {d}\n", .{right.currentMapCount});
             if (right.currentMapCount == selected) {
                 std.debug.print("Going to right map {s}\n", .{right.name});
                 if (self.map.?.left != null) {
@@ -141,12 +143,17 @@ pub const State = struct {
                 self.currentNode = 0;
                 self.selectedMap = 0;
                 if (self.map.?.right == null or self.map.?.left == null) {
-                    try self.generateNextMap("More Dungeon 2", .DUNGEON);
+                    try self.generateNextMap("More Dungeon 20", .DUNGEON);
+                    try self.generateNextMap("More Dungeon 21", .DUNGEON);
                 }
                 self.grid.clearTextures();
+                return;
             }
-        } else if (self.map.?.left != null) {
+        }
+
+        if (self.map.?.left != null) {
             const left = self.map.?.left.?;
+            std.debug.print("Checking left map {d}\n", .{left.currentMapCount});
             if (left.currentMapCount == selected) {
                 std.debug.print("Going to left map {s}\n", .{left.name});
                 if (self.map.?.right != null) {
@@ -158,11 +165,16 @@ pub const State = struct {
                 self.currentNode = 0;
                 self.selectedMap = 0;
                 if (self.map.?.right == null or self.map.?.left == null) {
-                    try self.generateNextMap("More Dungeon 3", .DUNGEON);
+                    try self.generateNextMap("More Dungeon 31", .DUNGEON);
+                    try self.generateNextMap("More Dungeon 32", .DUNGEON);
                 }
                 self.grid.clearTextures();
+                return;
             }
-        } else {
+        }
+
+        if (self.map.?.right == null and self.map.?.left == null) {
+            std.debug.print("Generating more maps...\n", .{});
             try self.generateNextMap("MORE DUNGEON", .DUNGEON);
             // try self.generateNextMap("MORE BOSS", .BOSS);
             // try self.generateNextMap("MORE SHOP", .SHOP);
@@ -435,28 +447,31 @@ pub const State = struct {
     }
 
     pub fn update(self: *@This()) !void {
-        if (self.map != null and !self.isMapMenu() and !try self.isShop() and !try self.isBoss()) {
-            const map = self.map.?;
-            const numnodes = map.nodes.items.len;
-            if ((self.currentNode + 1) > numnodes) {
-                self.mapMenuInputActive = true;
-                var mapMenuState = try self.allocator.create(MapMenuState);
-                defer self.allocator.destroy(mapMenuState);
-                mapMenuState.nextState = null;
-                mapMenuState.isComplete = false;
-                mapMenuState.startTime = rl.getTime();
+        // if (self.map != null and !self.isMapMenu() and !try self.isShop() and !try self.isBoss()) {
+        //     const map = self.map.?;
+        //     const numnodes = map.nodes.items.len;
+        //     if ((self.currentNode + 1) > numnodes) {
+        //         self.mapMenuInputActive = true;
+        //         var mapMenuState = try self.allocator.create(MapMenuState);
+        //         defer self.allocator.destroy(mapMenuState);
+        //         mapMenuState.nextState = null;
+        //         mapMenuState.isComplete = false;
+        //         mapMenuState.startTime = rl.getTime();
 
-                const mapMenuSmState = try mapMenuState.smState(&self.allocator);
+        //         const mapMenuSmState = try mapMenuState.smState(&self.allocator);
 
-                try self.stateMachine.?.setState(mapMenuSmState, self);
-            }
-        }
+        //         try self.stateMachine.?.setState(mapMenuSmState, self);
+        //     }
+        // }
         if (self.mode != .MENU and self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
             // do state transition
             std.debug.print("STATE COMPLETE\n\n", .{});
 
             const curState = self.stateMachine.?.state.?;
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
+
+            const map = self.map.?;
+            const numnodes = map.nodes.items.len;
 
             if (curState.smType == .GAMEEND) {
                 std.debug.print("GAME END\n", .{});
@@ -474,6 +489,7 @@ pub const State = struct {
                 std.debug.print("current node: {d}\ncurrent map: {d}\n", .{ self.currentNode, self.currentMap });
                 var nextSmState: ?*sm.SMState = null;
                 std.debug.print("Going to state...\n", .{});
+
                 if (monster != null) {
                     std.debug.print("FOUND MONSTER\n", .{});
                     var battleState = try self.allocator.create(BattleState);
@@ -503,6 +519,19 @@ pub const State = struct {
                     walkingState.startTime = rl.getTime();
                     const walkingSmState = try walkingState.smState(&self.allocator);
                     nextSmState = walkingSmState;
+                }
+
+                if ((self.currentNode + 1) >= numnodes) {
+                    self.mapMenuInputActive = true;
+                    var mapMenuState = try self.allocator.create(MapMenuState);
+                    defer self.allocator.destroy(mapMenuState);
+                    mapMenuState.nextState = null;
+                    mapMenuState.isComplete = false;
+                    mapMenuState.startTime = rl.getTime();
+
+                    const mapMenuSmState = try mapMenuState.smState(&self.allocator);
+                    nextSmState.?.nextState = mapMenuSmState;
+                    // try self.stateMachine.?.setState(mapMenuSmState, self);
                 }
 
                 if (nextSmState) |ns| {

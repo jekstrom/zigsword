@@ -81,6 +81,7 @@ pub const MapMenuState = struct {
             if (self.selectedMap > 0) {
                 state.selectedMap = self.selectedMap;
             }
+            std.debug.print("Setting map to selected map {d}\n", .{state.selectedMap});
             state.mapMenuInputActive = false;
             self.isComplete = true;
             self.selectedMap = 0;
