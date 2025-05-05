@@ -319,12 +319,11 @@ pub fn main() anyerror!void {
     state.grid.draw(&state);
 
     // Generate first maps
-    try state.generateNextMap("Start", .WALKING);
 
-    try state.generateNextMap("Dungeon 1", .DUNGEON);
-    try state.generateNextMap("Dungeon 2", .DUNGEON);
-    try state.generateNextMap("Boss 1", .BOSS);
-    try state.generateNextMap("Shop 1", .SHOP);
+    const st = try std.fmt.allocPrintZ(state.allocator, "Start", .{});
+    try state.generateNextMap(st, .WALKING);
+
+    try state.generateRandomMaps();
 
     // try state.generateNextMap("Dungeon 2", .DUNGEON);
     // try state.generateNextMap("Boss 2", .BOSS);

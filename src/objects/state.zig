@@ -143,8 +143,7 @@ pub const State = struct {
                 self.currentNode = 0;
                 self.selectedMap = 0;
                 if (self.map.?.right == null or self.map.?.left == null) {
-                    try self.generateNextMap("More Dungeon 20", .DUNGEON);
-                    try self.generateNextMap("More Dungeon 21", .DUNGEON);
+                    try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
                 self.grid.clearTextures();
@@ -166,8 +165,7 @@ pub const State = struct {
                 self.currentNode = 0;
                 self.selectedMap = 0;
                 if (self.map.?.right == null or self.map.?.left == null) {
-                    try self.generateNextMap("More Dungeon 31", .DUNGEON);
-                    try self.generateNextMap("More Dungeon 32", .DUNGEON);
+                    try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
                 self.grid.clearTextures();
@@ -177,11 +175,28 @@ pub const State = struct {
 
         if (self.map.?.right == null and self.map.?.left == null) {
             std.debug.print("Generating more maps...\n", .{});
-            try self.generateNextMap("MORE DUNGEON", .DUNGEON);
-            // try self.generateNextMap("MORE BOSS", .BOSS);
-            // try self.generateNextMap("MORE SHOP", .SHOP);
+            try self.generateRandomMaps();
             try self.goToNextMap();
         }
+    }
+
+    pub fn generateRandomMaps(self: *@This()) !void {
+        const nodeTypeLeft: u8 = self.rand.intRangeAtMost(
+            u8,
+            0,
+            4,
+        );
+
+        const nodeTypeRight: u8 = self.rand.intRangeAtMost(
+            u8,
+            0,
+            4,
+        );
+
+        const nameLeft = try m.generateMapName(@as(m.MapNodeType, @enumFromInt(nodeTypeLeft)), self);
+        const nameRight = try m.generateMapName(@as(m.MapNodeType, @enumFromInt(nodeTypeRight)), self);
+        try self.generateNextMap(nameLeft, @as(m.MapNodeType, @enumFromInt(nodeTypeLeft)));
+        try self.generateNextMap(nameRight, @as(m.MapNodeType, @enumFromInt(nodeTypeRight)));
     }
 
     pub fn generateNextMap(self: *@This(), name: [:0]const u8, nodeType: m.MapNodeType) !void {
@@ -206,7 +221,7 @@ pub const State = struct {
         }
 
         var newMap = try self.allocator.create(m.Map);
-        defer self.allocator.destroy(newMap);
+        // defer self.allocator.destroy(newMap);
 
         newMap.currentMapCount = self.mapCount;
         newMap.name = name;
@@ -507,7 +522,6 @@ pub const State = struct {
                     nextSmState = walkingSmState;
                 }
 
-                std.debug.print("self.currentNode  + 1 {d} >= numnodes {d}\n", .{ self.currentNode, numnodes });
                 if ((self.currentNode + 1) >= numnodes) {
                     std.debug.print("Adding MAPMENU STATE as next state\n", .{});
                     self.mapMenuInputActive = true;

@@ -93,6 +93,8 @@ pub const MapMenuState = struct {
         const parentPos = self.drawMap(map, parent, state, depth, side);
 
         if (map.left != null) {
+            std.debug.print("Drawing left child of {s}\n", .{map.name});
+            std.debug.print("left child: {s}\n", .{map.left.?.name});
             self.drawTree(map.left.?, parentPos, state, depth + 1, .left);
         }
         if (map.right != null) {
@@ -103,7 +105,7 @@ pub const MapMenuState = struct {
     fn drawMap(self: *@This(), map: *Map, parentPos: ?rl.Vector2, state: *s.State, depth: f32, side: MapSide) rl.Vector2 {
         const yoffset = 130.0;
         const center = state.grid.getCenterPos();
-        const txtSize = rl.measureTextEx(state.font, map.name, 50, 2);
+        const txtSize = rl.measureTextEx(state.font, map.name, 30, 2);
 
         var txtPos: rl.Vector2 = .{
             .x = 0,
@@ -198,7 +200,7 @@ pub const MapMenuState = struct {
             txtPos,
             .{ .x = txtSize.x / 2, .y = 0 },
             0.0,
-            50,
+            30,
             2,
             color,
         );

@@ -690,6 +690,7 @@ pub const Map = struct {
             try self.nodes.items[i].deinit(state);
         }
         self.nodes.deinit();
+        state.allocator.free(self.name);
     }
 
     pub fn debug(map: ?*Map) void {
@@ -716,3 +717,113 @@ pub const MapNodeType = enum(u8) {
     ASCEND,
     ASCENDBOSS,
 };
+
+const DungeonSuffixes = [_][]const u8{
+    "Dugeon",
+    "Lair",
+    "Basement",
+    "Donjon",
+    "Prison",
+    "Jail",
+    "Hole",
+};
+
+const DungeonPrefixes = [_][]const u8{
+    "Dank",
+    "Goblin",
+    "Moldy",
+    "Sunless",
+    "Fetid",
+    "Murky",
+};
+
+const ShopSuffixes = [_][]const u8{
+    "Shop",
+    "Store",
+    "Shoppe",
+    "Office",
+    "Study",
+    "Space",
+    "Parlor",
+};
+
+const ShopPrefixes = [_][]const u8{
+    "Discount",
+    "Fancy",
+    "Baroque",
+    "Artistic",
+    "Classy",
+    "High",
+};
+
+const WalkingSuffixes = [_][]const u8{
+    "Field",
+    "Meadow",
+    "Grass",
+    "Grounds",
+    "Land",
+    "Lawn",
+    "Gardens",
+};
+
+const WalkingPrefixes = [_][]const u8{
+    "Lush",
+    "Fertile",
+    "Teeming",
+    "Fruitful",
+    "Ample",
+    "Fecund",
+};
+
+pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
+    if (mapNodeType == .DUNGEON) {
+        const prefixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            DungeonPrefixes.len - 1,
+        );
+        const suffixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            DungeonSuffixes.len - 1,
+        );
+        const prefix = DungeonPrefixes[prefixIndex];
+        const suffix = DungeonSuffixes[suffixIndex];
+        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        return st;
+    }
+    if (mapNodeType == .SHOP) {
+        const prefixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            ShopPrefixes.len - 1,
+        );
+        const suffixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            ShopSuffixes.len - 1,
+        );
+        const prefix = ShopPrefixes[prefixIndex];
+        const suffix = ShopSuffixes[suffixIndex];
+        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        return st;
+    }
+    if (mapNodeType == .WALKING) {
+        const prefixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            WalkingPrefixes.len - 1,
+        );
+        const suffixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            WalkingSuffixes.len - 1,
+        );
+        const prefix = WalkingPrefixes[prefixIndex];
+        const suffix = WalkingSuffixes[suffixIndex];
+        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        return st;
+    }
+    const st = try std.fmt.allocPrintZ(state.allocator, "No map name", .{});
+    return st;
+}
