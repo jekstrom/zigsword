@@ -73,7 +73,7 @@ pub const Player = struct {
 
         var dcount: u8 = 0;
         const numd6: u8 = 2;
-        const numd4: u8 = 4 + numd6;
+        const numd4: u8 = 1 + numd6;
         var xoffset: f32 = 50.0;
         const tooltip = "";
         while (dcount < numd6) : (dcount += 1) {

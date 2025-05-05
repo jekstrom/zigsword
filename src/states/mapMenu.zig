@@ -93,8 +93,6 @@ pub const MapMenuState = struct {
         const parentPos = self.drawMap(map, parent, state, depth, side);
 
         if (map.left != null) {
-            std.debug.print("Drawing left child of {s}\n", .{map.name});
-            std.debug.print("left child: {s}\n", .{map.left.?.name});
             self.drawTree(map.left.?, parentPos, state, depth + 1, .left);
         }
         if (map.right != null) {

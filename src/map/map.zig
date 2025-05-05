@@ -775,6 +775,25 @@ const WalkingPrefixes = [_][]const u8{
     "Fecund",
 };
 
+const BossSuffixes = [_][]const u8{
+    "Boss",
+    "Leader",
+    "Lord",
+    "Overseer",
+    "Lieutenant",
+    "Kingpin",
+    "Tough",
+};
+
+const BossPrefixes = [_][]const u8{
+    "Big",
+    "Mean",
+    "Burly",
+    "Fierce",
+    "Thug",
+    "Evil",
+};
+
 pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
     if (mapNodeType == .DUNGEON) {
         const prefixIndex: usize = state.rand.intRangeAtMost(
@@ -821,6 +840,22 @@ pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
         );
         const prefix = WalkingPrefixes[prefixIndex];
         const suffix = WalkingSuffixes[suffixIndex];
+        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        return st;
+    }
+    if (mapNodeType == .BOSS) {
+        const prefixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            BossPrefixes.len - 1,
+        );
+        const suffixIndex: usize = state.rand.intRangeAtMost(
+            usize,
+            0,
+            BossSuffixes.len - 1,
+        );
+        const prefix = BossPrefixes[prefixIndex];
+        const suffix = BossSuffixes[suffixIndex];
         const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
         return st;
     }

@@ -380,35 +380,35 @@ pub fn main() anyerror!void {
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
 
     // TEST RUNES
-    var dawnRune: *DawnRune = try allocator.create(DawnRune);
+    // var dawnRune: *DawnRune = try allocator.create(DawnRune);
 
-    dawnRune.name = "Dawn";
-    dawnRune.pos = .{
-        .x = state.grid.getWidth() - 250.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const dr = try dawnRune.rune(&allocator);
-    try state.player.runes.?.append(dr);
+    // dawnRune.name = "Dawn";
+    // dawnRune.pos = .{
+    //     .x = state.grid.getWidth() - 250.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const dr = try dawnRune.rune(&allocator);
+    // try state.player.runes.?.append(dr);
 
-    var kinRune: *KinRune = try allocator.create(KinRune);
+    // var kinRune: *KinRune = try allocator.create(KinRune);
 
-    kinRune.name = "Kin";
-    kinRune.pos = .{
-        .x = state.grid.getWidth() - 220.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const kr = try kinRune.rune(&allocator);
-    try state.player.runes.?.append(kr);
+    // kinRune.name = "Kin";
+    // kinRune.pos = .{
+    //     .x = state.grid.getWidth() - 220.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const kr = try kinRune.rune(&allocator);
+    // try state.player.runes.?.append(kr);
 
-    var fateRune: *FateRune = try allocator.create(FateRune);
+    // var fateRune: *FateRune = try allocator.create(FateRune);
 
-    fateRune.name = "Fate";
-    fateRune.pos = .{
-        .x = state.grid.getWidth() - 190.0,
-        .y = state.grid.topUI() + 75.0,
-    };
-    const fr = try fateRune.rune(&allocator);
-    try state.player.runes.?.append(fr);
+    // fateRune.name = "Fate";
+    // fateRune.pos = .{
+    //     .x = state.grid.getWidth() - 190.0,
+    //     .y = state.grid.topUI() + 75.0,
+    // };
+    // const fr = try fateRune.rune(&allocator);
+    // try state.player.runes.?.append(fr);
 
     state.adventurer.reset(&state);
 

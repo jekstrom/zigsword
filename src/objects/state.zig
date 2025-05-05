@@ -181,16 +181,21 @@ pub const State = struct {
     }
 
     pub fn generateRandomMaps(self: *@This()) !void {
+        var atMost: u8 = 3;
+        if (self.player.runes != null and self.player.runes.?.items.len >= 3) {
+            atMost = 3;
+        }
+
         const nodeTypeLeft: u8 = self.rand.intRangeAtMost(
             u8,
             0,
-            4,
+            atMost,
         );
 
         const nodeTypeRight: u8 = self.rand.intRangeAtMost(
             u8,
             0,
-            4,
+            atMost,
         );
 
         const nameLeft = try m.generateMapName(@as(m.MapNodeType, @enumFromInt(nodeTypeLeft)), self);
@@ -221,7 +226,6 @@ pub const State = struct {
         }
 
         var newMap = try self.allocator.create(m.Map);
-        // defer self.allocator.destroy(newMap);
 
         newMap.currentMapCount = self.mapCount;
         newMap.name = name;
