@@ -556,6 +556,31 @@ pub fn main() anyerror!void {
                     .magenta,
                 );
             }
+            const st = try std.fmt.allocPrintZ(state.allocator, "({d}, {d})", .{ @round(mousePos.x), @round(mousePos.y) });
+            defer state.allocator.free(st);
+            rl.drawTextPro(
+                try rl.getFontDefault(),
+                st,
+                mousePos,
+                .{ .x = -15, .y = -10 },
+                0.0,
+                20,
+                2,
+                .black,
+            );
+            const hoveredCell = state.grid.getHoveredCell().?;
+            const st2 = try std.fmt.allocPrintZ(state.allocator, "({d}, {d})", .{ hoveredCell.r, hoveredCell.c });
+            defer state.allocator.free(st2);
+            rl.drawTextPro(
+                try rl.getFontDefault(),
+                st2,
+                hoveredCell.pos,
+                .{ .x = -15, .y = -5 },
+                0.0,
+                15,
+                2,
+                .black,
+            );
         }
     }
 

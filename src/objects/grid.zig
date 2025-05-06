@@ -22,6 +22,8 @@ pub const Cell = struct {
     id: i32,
     hover: bool,
     pos: rl.Vector2,
+    r: usize = 0,
+    c: usize = 0,
     textures: std.ArrayList(CellTexture),
 
     pub fn clearTextures(self: *@This()) void {
@@ -102,6 +104,17 @@ pub const Grid = struct {
         return numRows * @as(f32, @floatFromInt(self.cellSize));
     }
 
+    pub fn getHoveredCell(self: @This()) ?Cell {
+        for (0..@as(usize, @intCast(Grid.numRows))) |r| {
+            for (0..@as(usize, @intCast(Grid.numCols))) |c| {
+                if (self.cells[r][c].hover) {
+                    return self.cells[r][c];
+                }
+            }
+        }
+        return null;
+    }
+
     pub fn draw(self: @This(), state: *s.State) void {
         var hovered: ?*Cell = null;
         var cellId: i32 = 0;
@@ -114,6 +127,8 @@ pub const Grid = struct {
                 state.grid.cells[r][c].pos = cellPos;
                 cellId += 1;
                 state.grid.cells[r][c].id = cellId;
+                state.grid.cells[r][c].r = r;
+                state.grid.cells[r][c].c = c;
 
                 if (state.mousePos.x <= colnum + cellSize and state.mousePos.y <= rownum + cellSize and state.mousePos.x >= colnum and state.mousePos.y >= rownum) {
                     state.grid.cells[r][c].hover = true;
