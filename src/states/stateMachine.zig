@@ -15,6 +15,7 @@ pub const StateMachine = struct {
             try self.clearState();
         }
         self.state = newState;
+        std.debug.print("Entering state: {*}\n", .{newState});
         try self.state.?.enter(state);
     }
 

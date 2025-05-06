@@ -20,7 +20,7 @@ pub const BattleState = struct {
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *BattleState = @ptrCast(@alignCast(ptr));
-        self.startTime = rl.getTime();
+        _ = self;
 
         state.turn = .MONSTER;
 

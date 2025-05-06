@@ -217,7 +217,10 @@ pub fn main() anyerror!void {
     // defer arena.deinit();
     // const allocator = arena.allocator();
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.GeneralPurposeAllocator(.{
+        .enable_memory_limit = true,
+        .safety = true,
+    }){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
 
@@ -315,43 +318,12 @@ pub fn main() anyerror!void {
         }
     }
 
-    // Set up initial grid to get correct positioning
-    state.grid.draw(&state);
-
-    // Generate first maps
-
-    const st = try std.fmt.allocPrintZ(state.allocator, "Start", .{});
-    try state.generateNextMap(st, .WALKING);
-
-    try state.generateRandomMaps();
-
-    // try state.generateNextMap("Dungeon 2", .DUNGEON);
-    // try state.generateNextMap("Boss 2", .BOSS);
-    // try state.generateNextMap("Shop 2", .SHOP);
-
-    // try state.generateNextMap("Dungeon 3", .DUNGEON);
-    // try state.generateNextMap("Boss 3", .BOSS);
-    // try state.generateNextMap("Shop 3", .SHOP);
-
-    // try state.generateNextMap("Ascend", .ASCEND);
-
-    state.map.?.print();
-    state.currentMap = state.map.?.currentMapCount;
-    std.debug.print("current map: {d}", .{state.currentMap});
-    std.debug.print(" {s}\n", .{state.map.?.name});
-
-    const groundY = state.grid.getGroundY();
-
-    state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
-
     // Keep track of new adventurer's dialog progress
     // Set up memory for player state
     state.player.altarHistory = AltarHistoryList.init(allocator);
     state.player.dice = DiceList.init(allocator);
     state.player.runes = RuneList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
-
-    try state.player.reset(&state);
 
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,
@@ -374,8 +346,21 @@ pub fn main() anyerror!void {
     statemachine.allocator = &allocator;
     statemachine.state = menuSmState;
     defer allocator.destroy(statemachine);
-
     state.stateMachine = statemachine;
+
+    // Set up initial grid to get correct positioning
+    state.grid.draw(&state);
+
+    try state.reset();
+
+    state.map.?.print();
+    state.currentMap = state.map.?.currentMapCount;
+    std.debug.print("current map: {d}", .{state.currentMap});
+    std.debug.print(" {s}\n", .{state.map.?.name});
+
+    const groundY = state.grid.getGroundY();
+
+    state.adventurer.pos = .{ .x = -100, .y = groundY - 110 };
 
     const topUI = state.grid.cells[state.grid.cells.len - 4][0].pos.y + @as(f32, @floatFromInt(state.grid.cellSize));
 
@@ -596,4 +581,6 @@ pub fn main() anyerror!void {
             state.grid.cells[r][c].textures.deinit();
         }
     }
+
+    state.deinit();
 }

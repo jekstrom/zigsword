@@ -18,7 +18,7 @@ pub const ShopState = struct {
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
         _ = state;
         const self: *ShopState = @ptrCast(@alignCast(ptr));
-        self.startTime = rl.getTime();
+        _ = self;
     }
 
     pub fn exit(ptr: *anyopaque, state: *s.State) anyerror!void {

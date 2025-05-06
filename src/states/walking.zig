@@ -17,8 +17,7 @@ pub const WalkingState = struct {
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *WalkingState = @ptrCast(@alignCast(ptr));
-        std.debug.print("Enter: {*}\n", .{self});
-        self.startTime = rl.getTime();
+        _ = self;
 
         // Set starting position for the adventurer
         state.adventurer.pos = .{

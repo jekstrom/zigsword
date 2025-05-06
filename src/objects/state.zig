@@ -10,6 +10,8 @@ const GameEndState = @import("../states/gameEnd.zig").GameEndState;
 const BattleState = @import("../states/battle.zig").BattleState;
 const ShopState = @import("../states/shop.zig").ShopState;
 const MapMenuState = @import("../states/mapMenu.zig").MapMenuState;
+const TutorialState = @import("../states/tutorial.zig").TutorialState;
+const MenuState = @import("../states/menu.zig").MenuState;
 const ShopItem = @import("shopitem.zig").ShopItem;
 
 pub var DEBUG_MODE = false;
@@ -37,6 +39,13 @@ pub const State = struct {
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
     messages: ?std.ArrayList([:0]const u8),
     stateMachine: ?*@import("../states/stateMachine.zig").StateMachine,
+    battleState: ?*BattleState = null,
+    gameEndState: ?*GameEndState = null,
+    mapMenuState: ?*MapMenuState = null,
+    shopState: ?*ShopState = null,
+    walkingState: ?*WalkingState = null,
+    tutorialState: ?*TutorialState = null,
+    menuState: ?*MenuState = null,
     stateMsgDecay: u8 = 255,
     tutorialStep: u4 = 0,
     selectedMap: u8,
@@ -63,33 +72,93 @@ pub const State = struct {
         }
         self.map = null;
 
+        if (self.battleState != null) {
+            self.allocator.destroy(self.battleState.?);
+        }
+        if (self.gameEndState != null) {
+            self.allocator.destroy(self.gameEndState.?);
+        }
+        if (self.mapMenuState != null) {
+            self.allocator.destroy(self.mapMenuState.?);
+        }
+        if (self.shopState != null) {
+            self.allocator.destroy(self.shopState.?);
+        }
+        if (self.walkingState != null) {
+            self.allocator.destroy(self.walkingState.?);
+        }
+        if (self.tutorialState != null) {
+            self.allocator.destroy(self.tutorialState.?);
+        }
+        if (self.menuState != null) {
+            self.allocator.destroy(self.menuState.?);
+        }
+        self.battleState = try self.allocator.create(BattleState);
+        self.gameEndState = try self.allocator.create(GameEndState);
+        self.mapMenuState = try self.allocator.create(MapMenuState);
+        self.shopState = try self.allocator.create(ShopState);
+        self.walkingState = try self.allocator.create(WalkingState);
+        self.tutorialState = try self.allocator.create(TutorialState);
+        self.menuState = try self.allocator.create(MenuState);
+
+        try self.resetStates();
+
         try self.stateMachine.?.clearState();
 
         // TODO: Player selection screen
         try self.player.reset(self);
 
+        const st = try std.fmt.allocPrintZ(self.allocator, "Start", .{});
+        try self.generateNextMap(st, .WALKING);
+        try self.generateRandomMaps();
+
         // TODO: Generate a new random adventurer.
         self.adventurer.reset(self);
 
-        try self.generateNextMap("Start", .WALKING);
+        // Start with Tutorial state after reset
+        const tutorialSmState: *sm.SMState = try self.tutorialState.?.smState(&self.allocator);
 
-        var tutorialState = try self.allocator.create(@import("../states/tutorial.zig").TutorialState);
-        defer self.allocator.destroy(tutorialState);
-        tutorialState.nextState = null;
-        tutorialState.isComplete = false;
-        tutorialState.tutorialStep = &self.tutorialStep;
-        tutorialState.startTime = rl.getTime();
-
-        const tutorialSmState: *sm.SMState = try tutorialState.smState(&self.allocator);
-
-        var menuState = try self.allocator.create(@import("../states/menu.zig").MenuState);
-        defer self.allocator.destroy(menuState);
-        menuState.nextState = tutorialSmState;
-        menuState.isComplete = false;
-        menuState.startTime = rl.getTime();
-
-        const menuSmState: *sm.SMState = try menuState.smState(&self.allocator);
+        var menuSmState: *sm.SMState = try self.menuState.?.smState(&self.allocator);
+        std.debug.print("*******Setting next state to {*}\n\n", .{tutorialSmState});
+        menuSmState.nextState = tutorialSmState;
         try self.stateMachine.?.setState(menuSmState, self);
+    }
+
+    fn resetStates(self: *@This()) !void {
+        self.battleState.?.isComplete = false;
+        self.battleState.?.lootHandled = false;
+        self.battleState.?.nextState = null;
+
+        self.gameEndState.?.isComplete = false;
+        self.gameEndState.?.messageHandled = false;
+        self.gameEndState.?.nextState = null;
+
+        self.mapMenuState.?.isComplete = false;
+        self.mapMenuState.?.nextState = null;
+
+        self.shopState.?.isComplete = false;
+        self.shopState.?.nextState = null;
+
+        self.walkingState.?.isComplete = false;
+        self.walkingState.?.doExit = false;
+        self.walkingState.?.nextState = null;
+
+        self.tutorialState.?.isComplete = false;
+        self.tutorialState.?.tutorialStep = &self.tutorialStep;
+        self.tutorialState.?.nextState = null;
+
+        self.menuState.?.isComplete = false;
+        self.menuState.?.nextState = null;
+    }
+
+    pub fn deinit(self: *@This()) void {
+        self.allocator.destroy(self.battleState.?);
+        self.allocator.destroy(self.gameEndState.?);
+        self.allocator.destroy(self.mapMenuState.?);
+        self.allocator.destroy(self.shopState.?);
+        self.allocator.destroy(self.walkingState.?);
+        self.allocator.destroy(self.tutorialState.?);
+        self.allocator.destroy(self.menuState.?);
     }
 
     pub fn isMenu(self: @This()) bool {
@@ -471,6 +540,7 @@ pub const State = struct {
         if (self.mode != .MENU and self.stateMachine != null and self.stateMachine.?.state != null and try self.stateMachine.?.state.?.getIsComplete()) {
             // do state transition
             std.debug.print("STATE COMPLETE\n\n", .{});
+            try self.resetStates();
 
             const curState = self.stateMachine.?.state.?;
             const nextState: ?*@import("../states/smState.zig").SMState = curState.nextState;
@@ -482,7 +552,8 @@ pub const State = struct {
             }
 
             if (nextState != null) {
-                std.debug.print("GOING TO NEXT STATE\n", .{});
+                std.debug.print("Current state: {*}{}\n", .{ curState, curState.smType });
+                std.debug.print("GOING TO NEXT STATE {*}{}\n", .{ nextState.?, nextState.?.smType });
                 try self.stateMachine.?.setState(nextState.?, self);
             } else if (curState.smType != .TUTORIAL) {
                 // Next state is null and current state is WALKING, go to next map node.
@@ -497,45 +568,22 @@ pub const State = struct {
 
                 if (monster != null) {
                     std.debug.print("FOUND MONSTER\n", .{});
-                    var battleState = try self.allocator.create(BattleState);
-                    defer self.allocator.destroy(battleState);
-                    battleState.nextState = null;
-                    battleState.isComplete = false;
-                    battleState.startTime = rl.getTime();
-
-                    const battleSmState = try battleState.smState(&self.allocator);
+                    const battleSmState = try self.battleState.?.smState(&self.allocator);
                     nextSmState = battleSmState;
                 } else if (try self.isShop()) {
                     std.debug.print("SHOP STATE\n", .{});
-                    var shopState = try self.allocator.create(ShopState);
-                    defer self.allocator.destroy(shopState);
-                    shopState.nextState = null;
-                    shopState.isComplete = false;
-                    shopState.startTime = rl.getTime();
-
-                    const shopSmState = try shopState.smState(&self.allocator);
+                    const shopSmState = try self.shopState.?.smState(&self.allocator);
                     nextSmState = shopSmState;
                 } else {
                     std.debug.print("WALKING STATE\n", .{});
-                    var walkingState = try self.allocator.create(WalkingState);
-                    defer self.allocator.destroy(walkingState);
-                    walkingState.nextState = null;
-                    walkingState.isComplete = false;
-                    walkingState.startTime = rl.getTime();
-                    const walkingSmState = try walkingState.smState(&self.allocator);
+                    const walkingSmState = try self.walkingState.?.smState(&self.allocator);
                     nextSmState = walkingSmState;
                 }
 
                 if ((self.currentNode + 1) >= numnodes) {
                     std.debug.print("Adding MAPMENU STATE as next state\n", .{});
                     self.mapMenuInputActive = true;
-                    var mapMenuState = try self.allocator.create(MapMenuState);
-                    defer self.allocator.destroy(mapMenuState);
-                    mapMenuState.nextState = null;
-                    mapMenuState.isComplete = false;
-                    mapMenuState.startTime = rl.getTime();
-
-                    const mapMenuSmState = try mapMenuState.smState(&self.allocator);
+                    const mapMenuSmState = try self.mapMenuState.?.smState(&self.allocator);
                     nextSmState.?.nextState = mapMenuSmState;
                 }
 
@@ -550,13 +598,7 @@ pub const State = struct {
             } else if (curState.smType == .TUTORIAL) {
                 std.debug.print("TUTORIAL STATE\n", .{});
                 // Handle initial walking state
-                var walkingState = try self.allocator.create(WalkingState);
-                defer self.allocator.destroy(walkingState);
-                walkingState.nextState = null;
-                walkingState.isComplete = false;
-                walkingState.startTime = rl.getTime();
-
-                const walkingSmState = try walkingState.smState(&self.allocator);
+                const walkingSmState = try self.walkingState.?.smState(&self.allocator);
                 try self.stateMachine.?.setState(walkingSmState, self);
             }
         }

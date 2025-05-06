@@ -21,7 +21,7 @@ pub const MapMenuState = struct {
 
     pub fn enter(ptr: *anyopaque, state: *s.State) anyerror!void {
         const self: *MapMenuState = @ptrCast(@alignCast(ptr));
-        self.startTime = rl.getTime();
+
         self.selectedMap = 0;
         _ = state;
     }
