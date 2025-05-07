@@ -252,7 +252,7 @@ pub const State = struct {
     pub fn generateRandomMaps(self: *@This()) !void {
         var atMost: u8 = 3;
         if (self.player.runes != null and self.player.runes.?.items.len >= 3) {
-            atMost = 3;
+            atMost = 4;
         }
 
         const nodeTypeLeft: u8 = self.rand.intRangeAtMost(

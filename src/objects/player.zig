@@ -373,6 +373,7 @@ pub const Player = struct {
     }
 
     pub fn displayMessages(self: *@This(), decay: u8, dt: f32, state: *s.State) bool {
+        _ = state;
         if (self.messages == null or self.messages.?.items.len == 0) {
             return false;
         }
@@ -389,10 +390,7 @@ pub const Player = struct {
             return true;
         }
         if (decay == 0) {
-            const old = self.messages.?.pop();
-            if (old != null) {
-                state.allocator.free(old.?);
-            }
+            _ = self.messages.?.pop();
             return false;
         }
         return false;
