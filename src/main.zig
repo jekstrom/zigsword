@@ -230,6 +230,8 @@ pub fn main() anyerror!void {
     const RuneList = std.ArrayList(*Rune);
     const MessageList = std.ArrayList([:0]const u8);
     const PlayerMessageList = std.ArrayList([:0]const u8);
+    const PlayerRescued = std.ArrayList(enums.Rescues);
+    const PlayerKilled = std.ArrayList(enums.Rescues);
 
     var map = std.AutoHashMap(enums.TextureType, rl.Texture).init(allocator);
     defer map.deinit();
@@ -282,6 +284,8 @@ pub fn main() anyerror!void {
             .maxDice = 6,
             .messages = null,
             .stateMachine = null,
+            .rescued = null,
+            .killed = null,
         },
         .adventurer = .{
             .name = "Zig",
@@ -324,6 +328,8 @@ pub fn main() anyerror!void {
     state.player.dice = DiceList.init(allocator);
     state.player.runes = RuneList.init(allocator);
     state.player.messages = PlayerMessageList.init(allocator);
+    state.player.rescued = PlayerRescued.init(allocator);
+    state.player.killed = PlayerKilled.init(allocator);
 
     var tutorialState: @import("states/tutorial.zig").TutorialState = .{
         .nextState = null,

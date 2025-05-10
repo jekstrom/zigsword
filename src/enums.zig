@@ -28,6 +28,7 @@ pub const TextureType = enum(u8) {
     DAWNRUNE,
     D4,
     D6,
+    PEASANTRESCUE,
 };
 
 pub const GamePhase = enum(u8) {
@@ -53,6 +54,12 @@ pub const Turn = enum(u8) {
 pub const Alignment = enum(u8) {
     GOOD,
     EVIL,
+};
+
+pub const Rescues = enum(u8) {
+    PRINCESS,
+    GOBLIN,
+    PEASANT,
 };
 
 pub const MapSide = enum(u8) {

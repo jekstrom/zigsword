@@ -4,6 +4,7 @@ const s = @import("../objects/state.zig");
 const g = @import("../objects/grid.zig");
 const altar = @import("../events/altar.zig");
 const AscendWalkingEvent = @import("../events/ascend.zig").AscendWalkingEvent;
+const RescueWalkingEvent = @import("../events/rescue.zig").RescueWalkingEvent;
 const Event = @import("../events/event.zig").Event;
 const treasure = @import("../events/treasure.zig");
 const mob = @import("../objects/monster.zig");
@@ -64,7 +65,7 @@ pub const MapNode = struct {
         //TODO: Better randomization for map node contents
 
         if (self.type == .WALKING) {
-            if (nodeContents > 13) {
+            if (nodeContents > 8 and nodeContents < 13) {
                 std.debug.print("Adding Altar to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
                 var walkingEvent = try state.allocator.create(altar.AlterWalkingEvent);
@@ -78,6 +79,22 @@ pub const MapNode = struct {
                     .y = groundCenter.y - 110,
                 };
                 const event = try walkingEvent.event(&state.allocator);
+                self.event = event;
+            }
+            if (nodeContents > 13) {
+                std.debug.print("Adding rescue event to node {s}\n", .{self.name});
+
+                const groundCenter = state.grid.getGroundCenterPos();
+                var rescueEvent = try state.allocator.create(RescueWalkingEvent);
+
+                rescueEvent.handled = false;
+                rescueEvent.name = "Peasant Rescue";
+                rescueEvent.eventType = .RESCUE;
+                rescueEvent.pos = .{
+                    .x = groundCenter.x + 100,
+                    .y = groundCenter.y - 110,
+                };
+                const event = try rescueEvent.event(&state.allocator);
                 self.event = event;
             }
         }
@@ -208,7 +225,7 @@ pub const MapNode = struct {
                     .speed = 0.45,
                     .health = 2,
                     .maxHealth = 2,
-                    .damageRange = 25,
+                    .damageRange = 5,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
                     .runes = null,
@@ -223,7 +240,7 @@ pub const MapNode = struct {
                     .speed = 0.25,
                     .health = 4,
                     .maxHealth = 4,
-                    .damageRange = 35,
+                    .damageRange = 10,
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
                     .runes = null,

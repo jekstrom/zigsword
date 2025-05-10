@@ -31,6 +31,8 @@ pub const Player = struct {
     monstersKilled: u8 = 0,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
     runes: ?std.ArrayList(*Rune),
+    rescued: ?std.ArrayList(enums.Rescues),
+    killed: ?std.ArrayList(enums.Rescues),
 
     pub fn reset(self: *@This(), state: *s.State) !void {
         self.pos = .{ .x = 0, .y = 0 };
@@ -66,6 +68,13 @@ pub const Player = struct {
 
         if (self.messages != null) {
             self.messages.?.clearAndFree();
+        }
+
+        if (self.rescued != null) {
+            self.rescued.?.clearAndFree();
+        }
+        if (self.killed != null) {
+            self.killed.?.clearAndFree();
         }
 
         // Add initial player dice
@@ -146,6 +155,12 @@ pub const Player = struct {
             }
             runes.deinit();
         }
+        if (self.rescued != null) {
+            self.rescued.?.deinit();
+        }
+        if (self.killed != null) {
+            self.killed.?.deinit();
+        }
     }
 
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) anyerror!void {
@@ -223,7 +238,7 @@ pub const Player = struct {
         self.dice.?.deinit();
         self.dice = newDice;
 
-        var damageScaled = result + 100;
+        var damageScaled = result;
 
         if (self.blessed) {
             damageScaled *= 20;
