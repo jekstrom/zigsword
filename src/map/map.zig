@@ -15,6 +15,7 @@ const FateRune = @import("../runes/fate.zig").FateRune;
 const DawnRune = @import("../runes/dawn.zig").DawnRune;
 const Rune = @import("../runes/rune.zig").Rune;
 const GameEndState = @import("../states/gameEnd.zig").GameEndState;
+const ShopMap = @import("shop.zig").ShopMap;
 
 pub const MapNode = struct {
     name: [:0]u8,
@@ -24,7 +25,7 @@ pub const MapNode = struct {
     monsters: ?std.ArrayList(mob.Monster),
     monstersEntered: bool,
     event: ?*Event,
-    shopItems: ?std.ArrayList(shop.ShopItem),
+    shopMap: ?*ShopMap,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
     pub fn print(self: @This()) void {
@@ -45,11 +46,8 @@ pub const MapNode = struct {
             }
             monsters.deinit();
         }
-        if (self.shopItems) |shopItems| {
-            for (0..shopItems.items.len) |i| {
-                shopItems.items[i].deinit(state);
-            }
-            shopItems.deinit();
+        if (self.shopMap != null) {
+            self.shopMap.?.deinit(state);
         }
         if (self.event) |evt| {
             try evt.deinit(state);
@@ -64,15 +62,20 @@ pub const MapNode = struct {
 
         //TODO: Better randomization for map node contents
 
-        if (self.type == .WALKING) {
+        if (self.type == .WALKING and state.tutorialStep > 0) {
             if (nodeContents > 8 and nodeContents < 13) {
                 std.debug.print("Adding Altar to node {s}\n", .{self.name});
                 const groundCenter = state.grid.getGroundCenterPos();
-                var walkingEvent = try state.allocator.create(altar.AlterWalkingEvent);
+                var walkingEvent = try state.allocator.create(altar.AltarWalkingEvent);
 
-                walkingEvent.alignment = .GOOD;
+                if (nodeContents > 8 and nodeContents < 11) {
+                    walkingEvent.alignment = .GOOD;
+                    walkingEvent.name = "Good Altar";
+                } else {
+                    walkingEvent.alignment = .EVIL;
+                    walkingEvent.name = "Evil Altar";
+                }
                 walkingEvent.handled = false;
-                walkingEvent.name = "Good Altar";
                 walkingEvent.eventType = .ALTAR;
                 walkingEvent.pos = .{
                     .x = groundCenter.x + 100,
@@ -265,53 +268,8 @@ pub const MapNode = struct {
         }
 
         if (self.type == .SHOP) {
-            // TODO: Generate shop items
-            var d6 = try state.allocator.create(BasicDie);
-            defer state.allocator.destroy(d6);
-            d6.name = "Basic d6";
-            d6.sides = 6;
-            d6.texture = state.textureMap.get(.D6);
-            d6.hovered = false;
-            d6.selected = false;
-            d6.broken = false;
-            d6.breakChance = 0;
-            d6.nextResult = 0;
-            d6.tooltip = "";
-            d6.index = 0;
-            d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
-            const d6die = try d6.die(&state.allocator);
-
-            var d4 = try state.allocator.create(BasicDie);
-            defer state.allocator.destroy(d4);
-            d4.name = "Basic d4";
-            d4.sides = 4;
-            d4.texture = state.textureMap.get(.D4);
-            d4.hovered = false;
-            d4.selected = false;
-            d4.broken = false;
-            d4.breakChance = 0;
-            d4.nextResult = 0;
-            d4.tooltip = "";
-            d4.index = 0;
-            d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
-            const d4die = try d4.die(&state.allocator);
-
-            try self.addShopItem(.{
-                .name = "Basic d6",
-                .die = d6die,
-                .price = 4,
-                .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
-                .texture = state.textureMap.get(.SHOPCARD).?,
-                .purchased = false,
-            });
-            try self.addShopItem(.{
-                .name = "Crit d4",
-                .die = d4die,
-                .price = 4,
-                .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
-                .texture = state.textureMap.get(.SHOPCARD).?,
-                .purchased = false,
-            });
+            const shopMap = try ShopMap.init(state.allocator);
+            try shopMap.generateRandomShopItems(state);
         }
     }
 
@@ -324,7 +282,11 @@ pub const MapNode = struct {
     }
 
     pub fn addShopItem(self: *@This(), shopItem: shop.ShopItem) !void {
-        try self.shopItems.?.append(shopItem);
+        if (self.shopMap == null) {
+            std.debug.print("Cannot insert shop item into map with no shop");
+            std.debug.assert(false);
+        }
+        try self.shopMap.?.shopItems.?.append(shopItem);
     }
 
     pub fn removeDeadMonsters(self: *@This()) void {
@@ -348,23 +310,6 @@ pub const MapNode = struct {
     }
 
     pub fn update(self: *@This(), state: *s.State) !void {
-        // if (self.stateMachine != null and self.stateMachine.?.state.getIsComplete()) {
-        //     // do state transition
-        //     const nextState: ?*@import("../states/smState.zig").SMState = self.stateMachine.?.state.nextState;
-        //     if (nextState != null) {
-        //         std.debug.print("MapNode Next state: {}\n", .{nextState.?.smType});
-        //         try self.stateMachine.?.setState(nextState.?, state);
-        //     } else if (self.stateMachine.?.state.smType == .WALKING) {
-        //         // Next state is null and current state is WALKING, go to next map node.
-
-        //         std.debug.print("MapNode Next state is null, going tone\n", .{});
-        //     }
-        // }
-
-        // if (self.stateMachine != null) {
-        //     try self.stateMachine.?.state.update(state);
-        // }
-
         if (self.monsters != null) {
             for (0..self.monsters.?.items.len) |i| {
                 var monster = &self.monsters.?.items[i];
@@ -391,75 +336,8 @@ pub const MapNode = struct {
 
         if (self.type == .ASCEND) {}
 
-        if (self.type == .SHOP and self.shopItems != null) {
-            const mousepos = rl.getMousePosition();
-            for (0..self.shopItems.?.items.len) |i| {
-                var item: *shop.ShopItem = &self.shopItems.?.items[i];
-                if (item.purchased) {
-                    continue;
-                }
-                const collisionRect = rl.Rectangle.init(
-                    item.pos.x - 32,
-                    item.pos.y - 38,
-                    190,
-                    210,
-                );
-
-                const hover = collisionRect.checkCollision(.{
-                    .x = mousepos.x,
-                    .y = mousepos.y,
-                    .height = 2,
-                    .width = 2,
-                });
-                if (hover) {
-                    var buffer: [64:0]u8 = std.mem.zeroes([64:0]u8);
-                    _ = std.fmt.bufPrintZ(
-                        &buffer,
-                        "{s} - {d}gp",
-                        .{ item.name, item.price },
-                    ) catch "";
-
-                    rl.drawRectangle(
-                        @as(i32, @intFromFloat(mousepos.x)),
-                        @as(i32, @intFromFloat(mousepos.y)) - 100,
-                        150,
-                        70,
-                        rl.getColor(0x0000D0),
-                    );
-
-                    rl.drawText(
-                        &buffer,
-                        @as(i32, @intFromFloat(mousepos.x)) + 10,
-                        @as(i32, @intFromFloat(mousepos.y)) - 90,
-                        20,
-                        .gray,
-                    );
-
-                    const hoverRect: rl.Rectangle = .{
-                        .x = collisionRect.x + 13,
-                        .y = collisionRect.y + 2,
-                        .width = 165,
-                        .height = 205,
-                    };
-
-                    rl.drawRectangleGradientEx(
-                        hoverRect,
-                        rl.Color.init(50, 100, 150, 0),
-                        rl.Color.init(50, 100, 150, 150),
-                        rl.Color.init(50, 100, 150, 0),
-                        rl.Color.init(50, 100, 150, 150),
-                    );
-                }
-                if (rl.isMouseButtonPressed(rl.MouseButton.left) and hover) {
-                    const lastDieIndex = state.player.dice.?.items.len;
-                    item.die.?.index = lastDieIndex;
-
-                    const purchased = try state.player.purchaseItem(item.*, state);
-                    if (purchased) {
-                        item.purchased = true;
-                    }
-                }
-            }
+        if (self.type == .SHOP and self.shopMap != null) {
+            try self.shopMap.?.update(state);
         }
     }
 
@@ -498,56 +376,7 @@ pub const MapNode = struct {
         }
 
         if (self.type == .SHOP) {
-            if (self.shopItems == null) {
-                return;
-            }
-            for (0..self.shopItems.?.items.len) |i| {
-                var item = &self.shopItems.?.items[i];
-                if (item.purchased) {
-                    continue;
-                }
-                const die = item.die.?;
-                const dest: f32 = state.grid.getCenterPos().x + @as(f32, @floatFromInt(256 * i));
-                _ = item.enter(dest, dt);
-
-                rl.drawTexturePro(
-                    item.texture,
-                    .{
-                        .x = 0,
-                        .y = 0,
-                        .width = 256,
-                        .height = 256,
-                    },
-                    .{
-                        .x = item.pos.x - 64,
-                        .y = item.pos.y - 64,
-                        .width = 256,
-                        .height = 256,
-                    },
-                    .{ .x = 0, .y = 0 },
-                    0.0,
-                    .white,
-                );
-
-                rl.drawTexturePro(
-                    die.texture.?,
-                    .{
-                        .x = 0,
-                        .y = 0,
-                        .width = 128,
-                        .height = 128,
-                    },
-                    .{
-                        .x = item.pos.x,
-                        .y = item.pos.y,
-                        .width = 128,
-                        .height = 128,
-                    },
-                    .{ .x = 0, .y = 0 },
-                    0.0,
-                    .white,
-                );
-            }
+            self.shopMap.?.draw(state);
         }
 
         if (self.type == .WALKING) {

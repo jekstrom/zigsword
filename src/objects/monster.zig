@@ -56,12 +56,9 @@ pub const Monster = struct {
         } else {
             state.adventurer.health -= damage;
 
-            var player = &state.player;
-
-            const playerMessages = player.messages;
-            if (playerMessages != null) {
+            if (state.player.messages != null) {
                 const st = try std.fmt.allocPrintZ(state.allocator, "{d}", .{damage});
-                try player.messages.?.append(st);
+                try state.player.messages.?.append(st);
             }
         }
     }

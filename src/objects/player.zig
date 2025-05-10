@@ -142,11 +142,12 @@ pub const Player = struct {
             }
             dice.deinit();
         }
-        if (self.messages) |msgs| {
-            for (0..msgs.items.len) |i| {
-                state.allocator.free(msgs.items[i]);
+        if (self.messages != null) {
+            for (0..self.messages.?.items.len) |i| {
+                std.debug.print("Freeing player message {s}\n", .{self.messages.?.items[i]});
+                state.allocator.free(self.messages.?.items[i]);
             }
-            msgs.deinit();
+            self.messages.?.deinit();
         }
         if (self.runes) |runes| {
             for (0..runes.items.len) |i| {
@@ -161,6 +162,7 @@ pub const Player = struct {
         if (self.killed != null) {
             self.killed.?.deinit();
         }
+        std.debug.print("PLAYER DEINIT DONE\n", .{});
     }
 
     pub fn attack(self: *@This(), state: *s.State, monster: *m.Monster) anyerror!void {
@@ -287,21 +289,6 @@ pub const Player = struct {
 
     // Update based on actions player has taken.
     pub fn update(self: *@This(), state: *s.State) anyerror!void {
-        // if (self.stateMachine != null and self.stateMachine.?.state.getIsComplete()) {
-        //     // do state transition
-        //     const nextState: ?*@import("../states/smState.zig").SMState = self.stateMachine.?.state.nextState;
-        //     if (nextState != null) {
-        //         std.debug.print("Player Next state: {}\n", .{nextState.?.smType});
-        //         try self.stateMachine.?.setState(nextState.?, state);
-        //     } else {
-        //         std.debug.print("Player Next state is null\n", .{});
-        //     }
-        // }
-
-        // if (self.stateMachine != null) {
-        //     try self.stateMachine.?.state.update(state);
-        // }
-
         if (state.adventurer.health <= 0) {
             // Reset -- wait for next adventurer
             self.equiped = false;
@@ -388,7 +375,6 @@ pub const Player = struct {
     }
 
     pub fn displayMessages(self: *@This(), decay: u8, dt: f32, state: *s.State) bool {
-        _ = state;
         if (self.messages == null or self.messages.?.items.len == 0) {
             return false;
         }
@@ -405,7 +391,8 @@ pub const Player = struct {
             return true;
         }
         if (decay == 0) {
-            _ = self.messages.?.pop();
+            const displayedMessage = self.messages.?.pop();
+            state.allocator.free(displayedMessage.?);
             return false;
         }
         return false;

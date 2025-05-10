@@ -13,6 +13,7 @@ const MapMenuState = @import("../states/mapMenu.zig").MapMenuState;
 const TutorialState = @import("../states/tutorial.zig").TutorialState;
 const MenuState = @import("../states/menu.zig").MenuState;
 const ShopItem = @import("shopitem.zig").ShopItem;
+const ShopMap = @import("../map/shop.zig").ShopMap;
 
 pub var DEBUG_MODE = false;
 
@@ -152,6 +153,7 @@ pub const State = struct {
     }
 
     pub fn deinit(self: *@This()) void {
+        std.debug.print("State DEINIT\n", .{});
         self.allocator.destroy(self.battleState.?);
         self.allocator.destroy(self.gameEndState.?);
         self.allocator.destroy(self.mapMenuState.?);
@@ -159,6 +161,7 @@ pub const State = struct {
         self.allocator.destroy(self.walkingState.?);
         self.allocator.destroy(self.tutorialState.?);
         self.allocator.destroy(self.menuState.?);
+        std.debug.print("State DEINIT done\n", .{});
     }
 
     pub fn isMenu(self: @This()) bool {
@@ -280,7 +283,6 @@ pub const State = struct {
 
         const List = std.ArrayList(m.MapNode);
         const MonsterList = std.ArrayList(mob.Monster);
-        const ShopItems = std.ArrayList(ShopItem);
 
         self.mapCount += 1;
 
@@ -315,7 +317,7 @@ pub const State = struct {
                     .monstersEntered = false,
                     .monsters = null,
                     .event = null,
-                    .shopItems = null,
+                    .shopMap = null,
                     .stateMachine = null,
                 };
                 try outsideNode.init(self);
@@ -329,7 +331,7 @@ pub const State = struct {
                     .monsters = MonsterList.init(self.allocator),
                     .monstersEntered = false,
                     .event = null,
-                    .shopItems = null,
+                    .shopMap = null,
                     .stateMachine = null,
                 };
                 try dungeonNode.init(self);
@@ -343,7 +345,7 @@ pub const State = struct {
                     .monsters = MonsterList.init(self.allocator),
                     .monstersEntered = false,
                     .event = null,
-                    .shopItems = null,
+                    .shopMap = null,
                     .stateMachine = null,
                 };
                 try dungeonNode.init(self);
@@ -357,7 +359,7 @@ pub const State = struct {
                     .monsters = MonsterList.init(self.allocator),
                     .monstersEntered = false,
                     .event = null,
-                    .shopItems = null,
+                    .shopMap = null,
                     .stateMachine = null,
                 };
                 try ascendBossNode.init(self);
@@ -371,7 +373,7 @@ pub const State = struct {
                     .monstersEntered = false,
                     .monsters = null,
                     .event = null,
-                    .shopItems = ShopItems.init(self.allocator),
+                    .shopMap = try ShopMap.init(self.allocator),
                     .stateMachine = null,
                 };
                 try shopNode.init(self);
@@ -385,7 +387,7 @@ pub const State = struct {
                     .monstersEntered = false,
                     .monsters = null,
                     .event = null,
-                    .shopItems = null,
+                    .shopMap = null,
                     .stateMachine = null,
                 };
                 try ascendNode.init(self);

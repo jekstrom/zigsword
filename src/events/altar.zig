@@ -6,7 +6,7 @@ const enums = @import("../enums.zig");
 const evt = @import("event.zig");
 
 // This is an event that can occur while in the walking mode.
-pub const AlterWalkingEvent = struct {
+pub const AltarWalkingEvent = struct {
     name: [:0]const u8,
     eventType: evt.EventType,
     pos: rl.Vector2,
@@ -14,27 +14,27 @@ pub const AlterWalkingEvent = struct {
     alignment: enums.Alignment,
 
     pub fn getName(ptr: *anyopaque) anyerror![:0]const u8 {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.name;
     }
 
     pub fn getEventType(ptr: *anyopaque) anyerror!evt.EventType {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.eventType;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.pos;
     }
 
     pub fn getHandled(ptr: *anyopaque) anyerror!bool {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         return self.handled;
     }
 
     pub fn draw(ptr: *anyopaque, state: *s.State) void {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         var texture = state.textureMap.get(.GOODALTAR);
         if (self.alignment == .EVIL) {
             texture = state.textureMap.get(.EVILALTAR);
@@ -65,7 +65,7 @@ pub const AlterWalkingEvent = struct {
     }
 
     pub fn handle(ptr: *anyopaque, state: *s.State) !void {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         if (self.handled) {
             return;
         }
@@ -122,11 +122,11 @@ pub const AlterWalkingEvent = struct {
     }
 
     pub fn deinit(ptr: *anyopaque, state: *s.State) anyerror!void {
-        const self: *AlterWalkingEvent = @ptrCast(@alignCast(ptr));
+        const self: *AltarWalkingEvent = @ptrCast(@alignCast(ptr));
         state.allocator.destroy(self);
     }
 
-    pub fn event(self: *AlterWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
+    pub fn event(self: *AltarWalkingEvent, allocator: *const std.mem.Allocator) !*evt.Event {
         return try evt.Event.init(
             self,
             self.name,

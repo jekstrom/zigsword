@@ -30,6 +30,11 @@ pub const ShopState = struct {
         _ = state;
         const self: *ShopState = @ptrCast(@alignCast(ptr));
 
+        // Add potions to heal the adventurer
+        // Add blacksmith to repair the player sword
+        // Add alchemy bench to craft runes
+        // Add ability to sell dice
+        //
         if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
             self.isComplete = true;
         }

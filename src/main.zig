@@ -331,26 +331,9 @@ pub fn main() anyerror!void {
     state.player.rescued = PlayerRescued.init(allocator);
     state.player.killed = PlayerKilled.init(allocator);
 
-    var tutorialState: @import("states/tutorial.zig").TutorialState = .{
-        .nextState = null,
-        .tutorialStep = &state.tutorialStep,
-        .isComplete = false,
-        .startTime = rl.getTime(),
-    };
-
-    const tutorialSmState: *SMState = try tutorialState.smState(&allocator);
-
-    var menuState: @import("states/menu.zig").MenuState = .{
-        .nextState = tutorialSmState,
-        .isComplete = false,
-        .startTime = rl.getTime(),
-    };
-
-    const menuSmState: *SMState = try menuState.smState(&allocator);
-
     var statemachine = try allocator.create(@import("states/stateMachine.zig").StateMachine);
     statemachine.allocator = &allocator;
-    statemachine.state = menuSmState;
+    statemachine.state = null;
     defer allocator.destroy(statemachine);
     state.stateMachine = statemachine;
 
