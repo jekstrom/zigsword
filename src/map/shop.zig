@@ -7,12 +7,11 @@ const MultDie = @import("../dice/mult.zig").MultDie;
 
 pub const ShopMap = struct {
     shopItems: std.ArrayList(shop.ShopItem),
-    background: ?rl.Texture,
 
-    pub fn init(allocator: std.mem.Allocator) !*ShopMap {
-        const sm = try allocator.create(ShopMap);
-        sm.shopItems = std.ArrayList(shop.ShopItem).init(allocator);
-        return sm;
+    pub fn init(allocator: std.mem.Allocator) ShopMap {
+        return .{
+            .shopItems = std.ArrayList(shop.ShopItem).init(allocator),
+        };
     }
 
     pub fn deinit(self: *@This(), state: *s.State) void {

@@ -29,6 +29,7 @@ pub const TextureType = enum(u8) {
     D4,
     D6,
     PEASANTRESCUE,
+    HEALTHPOTION,
 };
 
 pub const GamePhase = enum(u8) {

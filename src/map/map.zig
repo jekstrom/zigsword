@@ -25,7 +25,7 @@ pub const MapNode = struct {
     monsters: ?std.ArrayList(mob.Monster),
     monstersEntered: bool,
     event: ?*Event,
-    shopMap: ?*ShopMap,
+    shopMap: ?ShopMap,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
 
     pub fn print(self: @This()) void {
@@ -46,12 +46,16 @@ pub const MapNode = struct {
             }
             monsters.deinit();
         }
-        if (self.shopMap != null) {
-            self.shopMap.?.deinit(state);
-        }
+        // if (self.shopMap != null) {
+        //     self.shopMap.?.deinit(state);
+        //
+        //     state.allocator.destroy(self.shopMap.?);
+        // }
         if (self.event) |evt| {
             try evt.deinit(state);
+            state.allocator.destroy(self.event.?);
         }
+
         state.allocator.free(self.name);
     }
 
@@ -268,8 +272,9 @@ pub const MapNode = struct {
         }
 
         if (self.type == .SHOP) {
-            const shopMap = try ShopMap.init(state.allocator);
+            var shopMap = ShopMap.init(state.allocator);
             try shopMap.generateRandomShopItems(state);
+            self.shopMap = shopMap;
         }
     }
 
@@ -536,7 +541,7 @@ pub const Map = struct {
             try self.nodes.items[i].deinit(state);
         }
         self.nodes.deinit();
-        state.allocator.free(self.name);
+        // state.allocator.free(self.name);
     }
 
     pub fn debug(map: ?*Map) void {
