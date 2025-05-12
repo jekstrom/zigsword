@@ -373,7 +373,7 @@ pub const State = struct {
                     .monstersEntered = false,
                     .monsters = null,
                     .event = null,
-                    .shopMap = null, //try ShopMap.init(self.allocator),
+                    .shopMap = ShopMap.init(self.allocator),
                     .stateMachine = null,
                 };
                 try shopNode.init(self);

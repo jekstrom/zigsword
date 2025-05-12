@@ -3,10 +3,12 @@ const std = @import("std");
 const enums = @import("../enums.zig");
 const s = @import("state.zig");
 const d = @import("../die.zig");
+const HealthPotion = @import("./healthpotion.zig").HealthPotion;
 
 pub const ShopItem = struct {
     name: [:0]const u8,
     die: ?*d.Die,
+    healthPotion: ?*HealthPotion,
     price: u8,
     pos: rl.Vector2,
     texture: rl.Texture,
@@ -22,7 +24,7 @@ pub const ShopItem = struct {
     }
 
     pub fn exit(self: *@This(), state: *s.State, dt: f32) bool {
-        if (self.pos.x < state.grid.constconstgetWidth()) {
+        if (self.pos.x < state.grid.getWidth()) {
             self.pos.x += rl.math.lerp(0, state.grid.getWidth(), 0.85 * dt);
             return false;
         }
@@ -32,6 +34,9 @@ pub const ShopItem = struct {
     pub fn deinit(self: *@This(), state: *s.State) void {
         if (self.die != null) {
             state.allocator.destroy(self.die.?);
+        }
+        if (self.healthPotion != null) {
+            state.allocator.destroy(self.healthPotion.?);
         }
     }
 };

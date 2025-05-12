@@ -276,14 +276,20 @@ pub const Player = struct {
             try state.messages.?.append("Not enough gold");
             return false;
         }
+        if (shopItem.die != null) {
+            if (self.dice.?.items.len >= self.maxDice) {
+                try state.messages.?.append("No room");
+                return false;
+            }
 
-        if (self.dice.?.items.len >= self.maxDice) {
-            try state.messages.?.append("No room");
-            return false;
+            try self.dice.?.append(shopItem.die.?);
+            self.gold -= shopItem.price;
         }
-
-        try self.dice.?.append(shopItem.die.?);
-        self.gold -= shopItem.price;
+        if (shopItem.healthPotion != null) {
+            // TODO: Add consumable inventory
+            // Health potion is a consumable item.
+            state.adventurer.health += shopItem.healthPotion.?.healAmount;
+        }
         return true;
     }
 

@@ -520,6 +520,7 @@ pub const Map = struct {
     }
 
     pub fn deinitAll(self: *@This(), state: *s.State) !void {
+        std.debug.print("MAP DEINIT ALL {s}\n", .{self.name});
         var currentMap: ?*Map = self;
 
         if (currentMap == null) {
@@ -534,14 +535,17 @@ pub const Map = struct {
         if (currentMap.?.left != null) {
             try currentMap.?.left.?.deinitAll(state);
         }
+        std.debug.print("MAP DEINIT DONE\n", .{});
     }
 
     pub fn deinit(self: *@This(), state: *s.State) !void {
+        std.debug.print("MAP DEINIT {s}\n", .{self.name});
         for (0..self.nodes.items.len) |i| {
             try self.nodes.items[i].deinit(state);
         }
         self.nodes.deinit();
-        // state.allocator.free(self.name);
+        state.allocator.free(self.name);
+        std.debug.print("MAP DEINIT DONE\n", .{});
     }
 
     pub fn debug(map: ?*Map) void {
