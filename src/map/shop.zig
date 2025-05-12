@@ -50,25 +50,24 @@ pub const ShopMap = struct {
     pub fn generateRandomShopItems(self: *@This(), state: *s.State) !void {
         // TODO: Generate shop items
         const randInt = state.rand.intRangeAtMost(u8, 0, 100);
-        _ = self;
         if (randInt >= 0) {
-            // std.debug.print("Adding health potion\n", .{});
-            // var healthPotion: *HealthPotion = try state.allocator.create(HealthPotion);
-            // healthPotion.healAmount = 25;
-            // healthPotion.texture = state.textureMap.get(.HEALTHPOTION);
-            // healthPotion.hovered = false;
-            // healthPotion.selected = false;
-            // healthPotion.index = 0;
-            // healthPotion.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
-            // try self.addShopItem(.{
-            //     .name = "Health Potion",
-            //     .price = 4,
-            //     .die = null,
-            //     .healthPotion = healthPotion,
-            //     .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
-            //     .texture = state.textureMap.get(.SHOPCARD).?,
-            //     .purchased = false,
-            // });
+            std.debug.print("Adding health potion\n", .{});
+            var healthPotion: *HealthPotion = try state.allocator.create(HealthPotion);
+            healthPotion.healAmount = 25;
+            healthPotion.texture = state.textureMap.get(.HEALTHPOTION);
+            healthPotion.hovered = false;
+            healthPotion.selected = false;
+            healthPotion.index = 0;
+            healthPotion.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
+            try self.addShopItem(.{
+                .name = "Health Potion",
+                .price = 4,
+                .die = null,
+                .healthPotion = healthPotion,
+                .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
+                .texture = state.textureMap.get(.SHOPCARD).?,
+                .purchased = false,
+            });
         }
         // var d6 = try state.allocator.create(BasicDie);
         // defer state.allocator.destroy(d6);
