@@ -73,7 +73,7 @@ pub const MapMenuState = struct {
             return;
         }
 
-        const currentMap: ?*Map = &state.map.?;
+        const currentMap: ?*Map = state.map.?;
 
         self.drawTree(currentMap.?, null, state, 0.0, .center);
 

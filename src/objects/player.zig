@@ -142,6 +142,7 @@ pub const Player = struct {
             }
             dice.deinit();
         }
+
         if (self.messages != null) {
             for (0..self.messages.?.items.len) |i| {
                 std.debug.print("Freeing player message {s}\n", .{self.messages.?.items[i]});
@@ -285,10 +286,14 @@ pub const Player = struct {
             try self.dice.?.append(shopItem.die.?);
             self.gold -= shopItem.price;
         }
-        if (shopItem.healthPotion != null) {
+        if (shopItem.healthPotion != null and state.adventurer.health < 100) {
             // TODO: Add consumable inventory
             // Health potion is a consumable item.
-            state.adventurer.health += shopItem.healthPotion.?.healAmount;
+            if (state.adventurer.health + shopItem.healthPotion.?.healAmount >= 100) {
+                state.adventurer.health = 100;
+            } else {
+                state.adventurer.health += shopItem.healthPotion.?.healAmount;
+            }
         }
         return true;
     }

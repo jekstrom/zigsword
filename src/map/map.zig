@@ -46,11 +46,9 @@ pub const MapNode = struct {
             }
             monsters.deinit();
         }
-        // if (self.shopMap != null) {
-        //     self.shopMap.?.deinit(state);
-        //
-        //     state.allocator.destroy(self.shopMap.?);
-        // }
+        if (self.shopMap != null) {
+            self.shopMap.?.deinit(state);
+        }
         if (self.event) |evt| {
             try evt.deinit(state);
             state.allocator.destroy(self.event.?);

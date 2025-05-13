@@ -34,6 +34,11 @@ pub const Die = struct {
     updateFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     deinitFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
     drawFn: *const fn (ptr: *anyopaque, state: *s.State) anyerror!void,
+    getNameFn: *const fn (ptr: *anyopaque) anyerror![:0]const u8,
+
+    pub fn getName(self: *@This()) anyerror![:0]const u8 {
+        return self.getNameFn(self.ptr);
+    }
 
     pub fn getSides(self: *@This()) anyerror!u16 {
         return self.getSidesFn(self.ptr);
@@ -207,6 +212,13 @@ pub const Die = struct {
                 return @call(.always_inline, ptr_info.pointer.child.getTooltip, .{self});
             }
 
+            pub fn getName(pointer: *anyopaque) anyerror![:0]const u8 {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getName, .{self});
+            }
+
             pub fn setTooltip(pointer: *anyopaque, newTooltip: [:0]const u8) anyerror!void {
                 const self: T = @ptrCast(@alignCast(pointer));
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
@@ -250,6 +262,7 @@ pub const Die = struct {
         sobj.getIndexFn = gen.getIndex;
         sobj.getTooltipFn = gen.getTooltip;
         sobj.setTooltipFn = gen.setTooltip;
+        sobj.getNameFn = gen.getName;
         sobj.getBrokenFn = gen.getBroken;
         sobj.setIndexFn = gen.setIndex;
         sobj.updateFn = gen.update;

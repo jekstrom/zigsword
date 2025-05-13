@@ -76,6 +76,11 @@ pub const BasicDie = struct {
         self.tooltip = newTooltip;
     }
 
+    pub fn getName(ptr: *anyopaque) anyerror![:0]const u8 {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        return self.name;
+    }
+
     pub fn getBroken(ptr: *anyopaque) anyerror!bool {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         return self.broken;

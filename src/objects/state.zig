@@ -34,7 +34,7 @@ pub const State = struct {
     currentNode: u8,
     maxSelectedRunes: u8 = 1,
     currentSelectedRuneCount: u8 = 0,
-    map: ?m.Map,
+    map: ?*m.Map,
     rand: std.Random,
     // a static collection of numbers, one per cell, to use as consistent values between maps for each game
     randomNumbers: [g.Grid.numRows][g.Grid.numCols]u16,
@@ -110,8 +110,12 @@ pub const State = struct {
         try self.player.reset(self);
 
         const st = try std.fmt.allocPrintZ(self.allocator, "Start", .{});
+        const st2 = try std.fmt.allocPrintZ(self.allocator, "Start2", .{});
+        const st3 = try std.fmt.allocPrintZ(self.allocator, "Start3", .{});
         try self.generateNextMap(st, .WALKING);
-        try self.generateRandomMaps();
+        try self.generateNextMap(st2, .SHOP);
+        try self.generateNextMap(st3, .SHOP);
+        // try self.generateRandomMaps();
 
         // TODO: Generate a new random adventurer.
         self.adventurer.reset(self);
@@ -161,6 +165,18 @@ pub const State = struct {
         self.allocator.destroy(self.walkingState.?);
         self.allocator.destroy(self.tutorialState.?);
         self.allocator.destroy(self.menuState.?);
+        if (self.messages != null) {
+            self.messages.?.deinit();
+        }
+        if (self.map != null) {
+            if (self.map.?.right != null) {
+                self.allocator.destroy(self.map.?.right.?);
+            }
+            if (self.map.?.left != null) {
+                self.allocator.destroy(self.map.?.left.?);
+            }
+            self.allocator.destroy(self.map.?);
+        }
         std.debug.print("State DEINIT done\n", .{});
     }
 
@@ -210,7 +226,8 @@ pub const State = struct {
                     try self.map.?.left.?.deinitAll(self);
                 }
                 try self.map.?.deinit(self);
-                self.map = right.*;
+                self.allocator.destroy(self.map.?);
+                self.map = right;
                 self.currentMap = self.map.?.currentMapCount;
                 self.currentNode = 0;
                 self.selectedMap = 0;
@@ -232,7 +249,8 @@ pub const State = struct {
                     try self.map.?.right.?.deinitAll(self);
                 }
                 try self.map.?.deinit(self);
-                self.map = left.*;
+                self.allocator.destroy(self.map.?);
+                self.map = left;
                 self.currentMap = self.map.?.currentMapCount;
                 self.currentNode = 0;
                 self.selectedMap = 0;
@@ -288,8 +306,8 @@ pub const State = struct {
 
         var numWalkingNodes = self.rand.intRangeAtMost(
             u4,
+            1,
             2,
-            4,
         );
 
         if (nodeType == .SHOP or nodeType == .BOSS or nodeType == .ASCEND or nodeType == .ASCENDBOSS) {
@@ -373,7 +391,7 @@ pub const State = struct {
                     .monstersEntered = false,
                     .monsters = null,
                     .event = null,
-                    .shopMap = ShopMap.init(self.allocator),
+                    .shopMap = null, //ShopMap.init(self.allocator),
                     .stateMachine = null,
                 };
                 try shopNode.init(self);
@@ -401,7 +419,7 @@ pub const State = struct {
             const allocator = arena.allocator();
             var mapqueue = std.ArrayList(?*m.Map).init(allocator);
 
-            var currentMap: ?*m.Map = &self.map.?;
+            var currentMap: ?*m.Map = self.map.?;
 
             while (currentMap != null) : (currentMap = mapqueue.orderedRemove(0)) {
                 std.debug.print("current: {s}\n", .{currentMap.?.name});
@@ -432,7 +450,7 @@ pub const State = struct {
             }
         } else {
             newMap.currentMapCount = 1;
-            self.map = newMap.*;
+            self.map = newMap;
         }
     }
 
@@ -454,7 +472,8 @@ pub const State = struct {
         }
         if (decay == 0) {
             std.debug.print("Done displaying {s}\n", .{msg});
-            _ = self.messages.?.pop();
+            const displayedMessage = self.messages.?.pop();
+            self.allocator.free(displayedMessage.?);
             return false;
         }
         return false;

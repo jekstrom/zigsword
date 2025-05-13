@@ -2,6 +2,7 @@ const rl = @import("raylib");
 const std = @import("std");
 const s = @import("../objects/state.zig");
 const shop = @import("../objects/shopitem.zig");
+const Die = @import("../die.zig").Die;
 const BasicDie = @import("../dice/basic.zig").BasicDie;
 const MultDie = @import("../dice/mult.zig").MultDie;
 const HealthPotion = @import("../objects/healthpotion.zig").HealthPotion;
@@ -48,73 +49,80 @@ pub const ShopMap = struct {
     }
 
     pub fn generateRandomShopItems(self: *@This(), state: *s.State) !void {
+        _ = self;
+        _ = state;
         // TODO: Generate shop items
-        const randInt = state.rand.intRangeAtMost(u8, 0, 100);
-        if (randInt >= 0) {
-            std.debug.print("Adding health potion\n", .{});
-            var healthPotion: *HealthPotion = try state.allocator.create(HealthPotion);
-            healthPotion.healAmount = 25;
-            healthPotion.texture = state.textureMap.get(.HEALTHPOTION);
-            healthPotion.hovered = false;
-            healthPotion.selected = false;
-            healthPotion.index = 0;
-            healthPotion.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
-            try self.addShopItem(.{
-                .name = "Health Potion",
-                .price = 4,
-                .die = null,
-                .healthPotion = healthPotion,
-                .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
-                .texture = state.textureMap.get(.SHOPCARD).?,
-                .purchased = false,
-            });
-        }
-        // var d6 = try state.allocator.create(BasicDie);
-        // defer state.allocator.destroy(d6);
-        // d6.name = "Basic d6";
-        // d6.sides = 6;
-        // d6.texture = state.textureMap.get(.D6);
-        // d6.hovered = false;
-        // d6.selected = false;
-        // d6.broken = false;
-        // d6.breakChance = 0;
-        // d6.nextResult = 0;
-        // d6.tooltip = "";
-        // d6.index = 0;
-        // d6.pos = .{ .x = -350, .y = state.grid.getCenterPos().y };
-        // const d6die = try d6.die(&state.allocator);
+        // const numItems = 3;
+        // var i: usize = 0;
+        // while (i < numItems) : (i += 1) {
+        //     const randInt = state.rand.intRangeAtMost(u8, 0, 100);
+        //     if (randInt >= 0 and randInt < 33) {
+        //         std.debug.print("Adding health potion\n", .{});
+        //         var healthPotion: *HealthPotion = try state.allocator.create(HealthPotion);
+        //         healthPotion.healAmount = 25;
+        //         healthPotion.texture = state.textureMap.get(.HEALTHPOTION);
+        //         healthPotion.hovered = false;
+        //         healthPotion.selected = false;
+        //         healthPotion.index = 0;
+        //         healthPotion.pos = .{ .x = -150 * (@as(f32, @floatFromInt(i)) + 1), .y = state.grid.getCenterPos().y };
+        //         try self.addShopItem(.{
+        //             .name = "Health Potion",
+        //             .price = 4,
+        //             .die = null,
+        //             .healthPotion = healthPotion,
+        //             .pos = .{ .x = -150 * (@as(f32, @floatFromInt(i)) + 1), .y = state.grid.getCenterPos().y },
+        //             .texture = state.textureMap.get(.SHOPCARD).?,
+        //             .purchased = false,
+        //         });
+        //     }
+        //     if (randInt >= 33) {
+        //         const randDie = state.rand.intRangeAtMost(u8, 0, 100);
+        //         var dieToAdd: ?*Die = null;
+        //         if (randDie >= 0 and randDie < 50) {
+        //             var d6 = try state.allocator.create(BasicDie);
+        //             defer state.allocator.destroy(d6);
+        //             d6.name = "Basic d6";
+        //             d6.sides = 6;
+        //             d6.texture = state.textureMap.get(.D6);
+        //             d6.hovered = false;
+        //             d6.selected = false;
         //
-        // var d4 = try state.allocator.create(BasicDie);
-        // defer state.allocator.destroy(d4);
-        // d4.name = "Basic d4";
-        // d4.sides = 4;
-        // d4.texture = state.textureMap.get(.D4);
-        // d4.hovered = false;
-        // d4.selected = false;
-        // d4.broken = false;
-        // d4.breakChance = 0;
-        // d4.nextResult = 0;
-        // d4.tooltip = "";
-        // d4.index = 0;
-        // d4.pos = .{ .x = -250, .y = state.grid.getCenterPos().y };
-        // const d4die = try d4.die(&state.allocator);
-        //
-        // try self.addShopItem(.{
-        //     .name = "Basic d6",
-        //     .die = d6die,
-        //     .price = 4,
-        //     .pos = .{ .x = -350, .y = state.grid.getCenterPos().y },
-        //     .texture = state.textureMap.get(.SHOPCARD).?,
-        //     .purchased = false,
-        // });
-        // try self.addShopItem(.{
-        //     .name = "Crit d4",
-        //     .die = d4die,
-        //     .price = 4,
-        //     .pos = .{ .x = -250, .y = state.grid.getCenterPos().y },
-        //     .texture = state.textureMap.get(.SHOPCARD).?,
-        //     .purchased = false,
-        // });
+        //             d6.broken = false;
+        //             d6.breakChance = 0;
+        //             d6.nextResult = 0;
+        //             d6.tooltip = "";
+        //             d6.index = 0;
+        //             d6.pos = .{ .x = -150 * (@as(f32, @floatFromInt(i)) + 1), .y = state.grid.getCenterPos().y };
+        //             dieToAdd = try d6.die(&state.allocator);
+        //         } else if (randDie >= 50) {
+        //             var d4 = try state.allocator.create(BasicDie);
+        //             defer state.allocator.destroy(d4);
+        //             d4.name = "Basic d4";
+        //             d4.sides = 4;
+        //             d4.texture = state.textureMap.get(.D4);
+        //             d4.hovered = false;
+        //             d4.selected = false;
+        //             d4.broken = false;
+        //             d4.breakChance = 0;
+        //             d4.nextResult = 0;
+        //             d4.tooltip = "";
+        //             d4.index = 0;
+        //             d4.pos = .{ .x = -150 * (@as(f32, @floatFromInt(i)) + 1), .y = state.grid.getCenterPos().y };
+        //             dieToAdd = try d4.die(&state.allocator);
+        //         }
+        //         if (dieToAdd != null) {
+        //             try self.addShopItem(.{
+        //                 .name = try dieToAdd.?.getName(),
+        //                 .die = dieToAdd.?,
+        //                 .healthPotion = null,
+        //                 .price = 4,
+        //                 .pos = .{ .x = -150 * (@as(f32, @floatFromInt(i)) + 1), .y = state.grid.getCenterPos().y },
+        //                 .texture = state.textureMap.get(.SHOPCARD).?,
+        //                 .purchased = false,
+        //             });
+        //         }
+        //     }
+        // }
     }
 
     pub fn update(self: *@This(), state: *s.State) !void {
@@ -284,8 +292,6 @@ pub const ShopMap = struct {
                     0.0,
                     .white,
                 );
-
-                // potion.draw(state);
             }
         }
     }
