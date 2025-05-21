@@ -17,9 +17,11 @@ pub const Die = struct {
     breakChance: u7,
     broken: bool,
     nextResult: u16,
+    sellPrice: u8,
     tooltip: [:0]const u8,
     getSidesFn: *const fn (ptr: *anyopaque) anyerror!u16,
     getNextResultFn: *const fn (ptr: *anyopaque) anyerror!u16,
+    getSellPriceFn: *const fn (ptr: *anyopaque) anyerror!u8,
     getBrokenFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHoveredFn: *const fn (ptr: *anyopaque) anyerror!bool,
@@ -46,6 +48,10 @@ pub const Die = struct {
 
     pub fn getNextResult(self: *@This()) anyerror!u16 {
         return self.getNextResultFn(self.ptr);
+    }
+
+    pub fn getSellPrice(self: *@This()) anyerror!u8 {
+        return self.getSellPriceFn(self.ptr);
     }
 
     pub fn getPos(self: *@This()) anyerror!rl.Vector2 {
@@ -114,6 +120,7 @@ pub const Die = struct {
         texture: ?rl.Texture,
         index: usize,
         breakChance: u7,
+        sellPrice: u8,
         tooltip: [:0]const u8,
         allocator: *const std.mem.Allocator,
     ) !*Die {
@@ -161,6 +168,13 @@ pub const Die = struct {
                 if (ptr_info != .pointer) @compileError("ptr must be a pointer");
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
                 return @call(.always_inline, ptr_info.pointer.child.getNextResult, .{self});
+            }
+
+            pub fn getSellPrice(pointer: *anyopaque) anyerror!u8 {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getSellPrice, .{self});
             }
 
             pub fn getPos(pointer: *anyopaque) anyerror!rl.Vector2 {
@@ -252,8 +266,10 @@ pub const Die = struct {
         sobj.index = index;
         sobj.breakChance = breakChance;
         sobj.tooltip = tooltip;
+        sobj.sellPrice = sellPrice;
         sobj.getSidesFn = gen.getSides;
         sobj.getNextResultFn = gen.getNextResult;
+        sobj.getSellPriceFn = gen.getSellPrice;
         sobj.getPosFn = gen.getPos;
         sobj.getHoveredFn = gen.getHovered;
         sobj.getSelectedFn = gen.getSelected;

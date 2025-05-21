@@ -16,6 +16,7 @@ pub const BasicDie = struct {
     texture: ?rl.Texture,
     index: usize,
     breakChance: u7,
+    sellPrice: u8,
     broken: bool,
     tooltip: [:0]const u8,
 
@@ -27,6 +28,11 @@ pub const BasicDie = struct {
     pub fn getNextResult(ptr: *anyopaque) anyerror!u16 {
         const self: *BasicDie = @ptrCast(@alignCast(ptr));
         return self.nextResult;
+    }
+
+    pub fn getSellPrice(ptr: *anyopaque) anyerror!u8 {
+        const self: *BasicDie = @ptrCast(@alignCast(ptr));
+        return self.sellPrice;
     }
 
     pub fn getPos(ptr: *anyopaque) anyerror!rl.Vector2 {
@@ -270,6 +276,7 @@ pub const BasicDie = struct {
             self.texture,
             self.index,
             self.breakChance,
+            self.sellPrice,
             self.tooltip,
             allocator,
         );

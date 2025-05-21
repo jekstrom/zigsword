@@ -1,4 +1,5 @@
 const rl = @import("raylib");
+const ui = @import("raygui");
 const std = @import("std");
 const s = @import("../objects/state.zig");
 const shop = @import("../objects/shopitem.zig");
@@ -82,10 +83,10 @@ pub const ShopMap = struct {
                     defer state.allocator.destroy(d6);
                     d6.name = "Basic d6";
                     d6.sides = 6;
+                    d6.sellPrice = 2;
                     d6.texture = state.textureMap.get(.D6);
                     d6.hovered = false;
                     d6.selected = false;
-
                     d6.broken = false;
                     d6.breakChance = 0;
                     d6.nextResult = 0;
@@ -98,6 +99,7 @@ pub const ShopMap = struct {
                     defer state.allocator.destroy(d4);
                     d4.name = "Basic d4";
                     d4.sides = 4;
+                    d4.sellPrice = 1;
                     d4.texture = state.textureMap.get(.D4);
                     d4.hovered = false;
                     d4.selected = false;
@@ -199,8 +201,18 @@ pub const ShopMap = struct {
             }
         }
     }
-    pub fn draw(self: @This(), state: *s.State) void {
+    pub fn draw(self: @This(), state: *s.State) !void {
         const dt = rl.getFrameTime();
+        if (ui.guiButton(.{ .x = 160, .y = 200, .height = 45, .width = 100 }, "Sell Die") > 0) {
+            if (state.player.dice != null) {
+                for (0..state.player.dice.?.items.len) |i| {
+                    const die: *Die = state.player.dice.?.items[i];
+                    if (try die.getSelected()) {
+                        std.debug.print("Selling die {s}\n", .{try die.getName()});
+                    }
+                }
+            }
+        }
         for (0..self.shopItems.items.len) |i| {
             var item = &self.shopItems.items[i];
             if (item.purchased) {

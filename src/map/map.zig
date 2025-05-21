@@ -379,7 +379,7 @@ pub const MapNode = struct {
         }
 
         if (self.type == .SHOP) {
-            self.shopMap.?.draw(state);
+            try self.shopMap.?.draw(state);
         }
 
         if (self.type == .WALKING) {

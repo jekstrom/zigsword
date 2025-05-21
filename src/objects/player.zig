@@ -90,6 +90,7 @@ pub const Player = struct {
             var d6 = try state.allocator.create(BasicDie);
             d6.name = "Basic d6";
             d6.sides = 6;
+            d6.sellPrice = 2;
             d6.texture = state.textureMap.get(.D6);
             d6.hovered = false;
             d6.selected = false;
@@ -112,6 +113,7 @@ pub const Player = struct {
             var d4 = try state.allocator.create(MultDie);
             d4.name = "Mult d4";
             d4.sides = 4;
+            d4.sellPrice = 4;
             d4.texture = state.textureMap.get(.D4);
             d4.hovered = false;
             d4.selected = false;
@@ -297,6 +299,8 @@ pub const Player = struct {
         }
         return true;
     }
+
+    pub fn sellDie(self: *@This(), die: *Die, state: *s.State) bool {}
 
     // Update based on actions player has taken.
     pub fn update(self: *@This(), state: *s.State) anyerror!void {
