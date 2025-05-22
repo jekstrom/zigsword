@@ -276,7 +276,8 @@ pub const Player = struct {
             return false;
         }
         if (self.gold < shopItem.price) {
-            try state.messages.?.append("Not enough gold");
+            const st = try std.fmt.allocPrintZ(state.allocator, "Not Enough Gold", .{});
+            try state.messages.?.append(st);
             return false;
         }
         if (shopItem.die != null) {
