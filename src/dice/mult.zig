@@ -17,11 +17,22 @@ pub const MultDie = struct {
     breakChance: u7,
     sellPrice: u8,
     broken: bool,
+    sold: bool,
     tooltip: [:0]const u8,
 
     pub fn getSides(ptr: *anyopaque) anyerror!u16 {
         const self: *MultDie = @ptrCast(@alignCast(ptr));
         return self.sides;
+    }
+
+    pub fn getSold(ptr: *anyopaque) anyerror!bool {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        return self.sold;
+    }
+
+    pub fn setSold(ptr: *anyopaque, sold: bool) anyerror!void {
+        const self: *MultDie = @ptrCast(@alignCast(ptr));
+        self.sold = sold;
     }
 
     pub fn getNextResult(ptr: *anyopaque) anyerror!u16 {
@@ -279,6 +290,7 @@ pub const MultDie = struct {
             self.index,
             self.breakChance,
             self.sellPrice,
+            self.sold,
             self.tooltip,
             allocator,
         );

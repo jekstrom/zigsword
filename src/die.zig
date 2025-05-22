@@ -18,10 +18,13 @@ pub const Die = struct {
     broken: bool,
     nextResult: u16,
     sellPrice: u8,
+    sold: bool,
     tooltip: [:0]const u8,
     getSidesFn: *const fn (ptr: *anyopaque) anyerror!u16,
     getNextResultFn: *const fn (ptr: *anyopaque) anyerror!u16,
     getSellPriceFn: *const fn (ptr: *anyopaque) anyerror!u8,
+    getSoldFn: *const fn (ptr: *anyopaque) anyerror!bool,
+    setSoldFn: *const fn (ptr: *anyopaque, sold: bool) anyerror!void,
     getBrokenFn: *const fn (ptr: *anyopaque) anyerror!bool,
     getPosFn: *const fn (ptr: *anyopaque) anyerror!rl.Vector2,
     getHoveredFn: *const fn (ptr: *anyopaque) anyerror!bool,
@@ -52,6 +55,14 @@ pub const Die = struct {
 
     pub fn getSellPrice(self: *@This()) anyerror!u8 {
         return self.getSellPriceFn(self.ptr);
+    }
+
+    pub fn getSold(self: *@This()) anyerror!bool {
+        return self.getSoldFn(self.ptr);
+    }
+
+    pub fn setSold(self: *@This(), sold: bool) anyerror!void {
+        return self.setSoldFn(self.ptr, sold);
     }
 
     pub fn getPos(self: *@This()) anyerror!rl.Vector2 {
@@ -121,6 +132,7 @@ pub const Die = struct {
         index: usize,
         breakChance: u7,
         sellPrice: u8,
+        sold: bool,
         tooltip: [:0]const u8,
         allocator: *const std.mem.Allocator,
     ) !*Die {
@@ -253,6 +265,20 @@ pub const Die = struct {
                 if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
                 return @call(.always_inline, ptr_info.pointer.child.setIndex, .{ self, newIndex });
             }
+
+            pub fn getSold(pointer: *anyopaque) anyerror!bool {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.getSold, .{self});
+            }
+
+            pub fn setSold(pointer: *anyopaque, newSold: bool) anyerror!void {
+                const self: T = @ptrCast(@alignCast(pointer));
+                if (ptr_info != .pointer) @compileError("ptr must be a pointer");
+                if (ptr_info.pointer.size != .one) @compileError("ptr must be a single item pointer");
+                return @call(.always_inline, ptr_info.pointer.child.setSold, .{ self, newSold });
+            }
         };
 
         var sobj = try allocator.create(Die);
@@ -267,7 +293,10 @@ pub const Die = struct {
         sobj.breakChance = breakChance;
         sobj.tooltip = tooltip;
         sobj.sellPrice = sellPrice;
+        sobj.sold = sold;
         sobj.getSidesFn = gen.getSides;
+        sobj.getSoldFn = gen.getSold;
+        sobj.setSoldFn = gen.setSold;
         sobj.getNextResultFn = gen.getNextResult;
         sobj.getSellPriceFn = gen.getSellPrice;
         sobj.getPosFn = gen.getPos;

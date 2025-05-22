@@ -300,7 +300,41 @@ pub const Player = struct {
         return true;
     }
 
-    pub fn sellDie(self: *@This(), die: *Die, state: *s.State) bool {}
+    pub fn sellSelectedDice(self: *@This(), state: *s.State) !bool {
+        if (self.dice == null) {
+            return false;
+        }
+        for (0..self.dice.?.items.len) |i| {
+            var die = self.dice.?.items[i];
+            if (!try die.getSelected() and !try die.getSold()) {
+                continue;
+            }
+
+            std.debug.print("Selling die {s} for {d}gp\n", .{ try die.getName(), try die.getSellPrice() });
+            self.gold += try die.getSellPrice();
+            try die.setSold(true);
+        }
+
+        var i = self.dice.?.items.len;
+
+        // Remove sold dice.
+        while (i > 0) {
+            i -= 1;
+            if (try self.dice.?.items[i].getSold()) {
+                const removedDie: *d.Die = self.dice.?.orderedRemove(i);
+                try removedDie.deinit(state);
+                state.allocator.destroy(removedDie);
+            }
+        }
+
+        // Update index of dice.
+        for (0..self.dice.?.items.len) |x| {
+            try self.dice.?.items[x].setIndex(x);
+            var dd = self.dice.?.items[x];
+            try dd.update(state);
+        }
+        return true;
+    }
 
     // Update based on actions player has taken.
     pub fn update(self: *@This(), state: *s.State) anyerror!void {

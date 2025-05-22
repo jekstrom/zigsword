@@ -205,12 +205,7 @@ pub const ShopMap = struct {
         const dt = rl.getFrameTime();
         if (ui.guiButton(.{ .x = 160, .y = 200, .height = 45, .width = 100 }, "Sell Die") > 0) {
             if (state.player.dice != null) {
-                for (0..state.player.dice.?.items.len) |i| {
-                    const die: *Die = state.player.dice.?.items[i];
-                    if (try die.getSelected()) {
-                        std.debug.print("Selling die {s}\n", .{try die.getName()});
-                    }
-                }
+                _ = try state.player.sellSelectedDice(state);
             }
         }
         for (0..self.shopItems.items.len) |i| {
