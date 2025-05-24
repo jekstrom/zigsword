@@ -29,6 +29,7 @@ pub const State = struct {
     mode: enums.GameMode,
     turn: enums.Turn,
     allocator: std.mem.Allocator,
+    arenaAllocator: std.mem.Allocator,
     currentMap: u8,
     mapCount: u8,
     currentNode: u8,
@@ -156,7 +157,7 @@ pub const State = struct {
         self.menuState.?.nextState = null;
     }
 
-    pub fn deinit(self: *@This()) void {
+    pub fn deinit(self: *@This()) !void {
         std.debug.print("State DEINIT\n", .{});
         self.allocator.destroy(self.battleState.?);
         self.allocator.destroy(self.gameEndState.?);
@@ -169,15 +170,33 @@ pub const State = struct {
             self.messages.?.deinit();
         }
         if (self.map != null) {
-            if (self.map.?.right != null) {
-                self.allocator.destroy(self.map.?.right.?);
+            var mapStack = std.ArrayList(?*m.Map).init(self.allocator);
+            defer mapStack.deinit();
+            try self.traverseMaps(self.map, &mapStack);
+            var i = mapStack.items.len;
+            while (i > 0) {
+                i -= 1;
+                const mapToDestroy = mapStack.pop();
+                self.allocator.destroy(mapToDestroy.?.?);
             }
-            if (self.map.?.left != null) {
-                self.allocator.destroy(self.map.?.left.?);
-            }
-            self.allocator.destroy(self.map.?);
         }
         std.debug.print("State DEINIT done\n", .{});
+    }
+
+    pub fn traverseMaps(self: *@This(), currentMap: ?*m.Map, stack: *std.ArrayList(?*m.Map)) !void {
+        if (currentMap == null) {
+            return;
+        }
+
+        try stack.append(currentMap);
+
+        if (currentMap.?.right != null) {
+            try self.traverseMaps(currentMap.?.right.?, stack);
+        }
+
+        if (currentMap.?.left != null) {
+            try self.traverseMaps(currentMap.?.left.?, stack);
+        }
     }
 
     pub fn isMenu(self: @This()) bool {
@@ -224,6 +243,7 @@ pub const State = struct {
                 std.debug.print("Going to right map {s}\n", .{right.name});
                 if (self.map.?.left != null) {
                     try self.map.?.left.?.deinitAll(self);
+                    self.allocator.destroy(self.map.?.left.?);
                 }
                 try self.map.?.deinit(self);
                 self.allocator.destroy(self.map.?);
@@ -247,6 +267,7 @@ pub const State = struct {
                 std.debug.print("Going to left map {s}\n", .{left.name});
                 if (self.map.?.right != null) {
                     try self.map.?.right.?.deinitAll(self);
+                    self.allocator.destroy(self.map.?.right.?);
                 }
                 try self.map.?.deinit(self);
                 self.allocator.destroy(self.map.?);

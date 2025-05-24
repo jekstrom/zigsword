@@ -79,8 +79,7 @@ pub const ShopMap = struct {
                 const randDie = state.rand.intRangeAtMost(u8, 0, 100);
                 var dieToAdd: ?*Die = null;
                 if (randDie >= 0 and randDie < 50) {
-                    var d6 = try state.allocator.create(BasicDie);
-                    defer state.allocator.destroy(d6);
+                    var d6 = try state.arenaAllocator.create(BasicDie);
                     d6.name = "Basic d6";
                     d6.sides = 6;
                     d6.sellPrice = 2;
@@ -95,8 +94,7 @@ pub const ShopMap = struct {
                     d6.pos = pos;
                     dieToAdd = try d6.die(&state.allocator);
                 } else if (randDie >= 50) {
-                    var d4 = try state.allocator.create(BasicDie);
-                    defer state.allocator.destroy(d4);
+                    var d4 = try state.arenaAllocator.create(BasicDie);
                     d4.name = "Basic d4";
                     d4.sides = 4;
                     d4.sellPrice = 1;

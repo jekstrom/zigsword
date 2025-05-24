@@ -213,9 +213,9 @@ pub fn main() anyerror!void {
     std.debug.print("\n\nRAYLIB VERSION {s}\n", .{rl.RAYLIB_VERSION});
     std.debug.print("GAME START {s} {}\n\n", .{ gameName, std.time.timestamp() });
 
-    // var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    // defer arena.deinit();
-    // const allocator = arena.allocator();
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const arenaAllocator = arena.allocator();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{
         .enable_memory_limit = true,
@@ -311,6 +311,7 @@ pub fn main() anyerror!void {
             } ** Grid.numRows,
         },
         .allocator = allocator,
+        .arenaAllocator = arenaAllocator,
         .rand = rand,
         .randomNumbers = [_][Grid.numCols]u16{[_]u16{0} ** Grid.numCols} ** Grid.numRows,
         .messages = MessageList.init(allocator),
@@ -577,6 +578,11 @@ pub fn main() anyerror!void {
     try state.player.deinit(&state);
 
     if (state.stateMachine) |sm| {
+        if (sm.state != null and sm.state.?.nextState != null) {
+            // TODO: traverse all next states and destroy them.
+            // At the moment I only have one level of next states.
+            state.allocator.destroy(sm.state.?.nextState.?);
+        }
         try sm.clearState();
     }
 
@@ -596,5 +602,5 @@ pub fn main() anyerror!void {
         }
     }
 
-    state.deinit();
+    try state.deinit();
 }
