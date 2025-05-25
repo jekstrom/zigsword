@@ -58,10 +58,10 @@ pub const ShopMap = struct {
         while (i < numItems) : (i += 1) {
             // const randInt = state.rand.intRangeAtMost(u8, 0, 100);
             const pos: rl.Vector2 = .{ .x = -256, .y = state.grid.getCenterPos().y };
-            // const st = try std.fmt.allocPrintZ(state.allocator, "Dice Pack", .{});
-            const pack: DicePack = DicePack.init("Dice Pack", 3, pos, state.textureMap.get(.BOOSTER1).?);
+            const st = try std.fmt.allocPrintZ(state.allocator, "Dice Pack", .{});
+            const pack: DicePack = DicePack.init(st, 3, pos, state.textureMap.get(.BOOSTER1).?);
             try self.addShopItem(.{
-                .name = pack.name,
+                .name = "Dice Pack",
                 .price = 3,
                 .die = null,
                 .healthPotion = null,
@@ -241,10 +241,12 @@ pub const ShopMap = struct {
         if (self.mode == .OPENPACK) {
             if (ui.guiButton(.{ .x = 160, .y = 250, .height = 45, .width = 100 }, "Skip") > 0) {
                 self.mode = .NORMAL;
-                var i: u8 = 0;
+                var i = 0;
                 while (i < self.dicePackContents.items.len) : (i += 1) {
                     self.dicePackContents.items[i].deinit(state);
                 }
+
+                self.dicePackContents.deinit();
             }
         }
         if (self.mode == .NORMAL) {
@@ -363,7 +365,6 @@ pub const ShopMap = struct {
             }
         } else if (self.mode == .OPENPACK) {
             for (0..self.dicePackContents.items.len) |i| {
-                const dest: f32 = state.grid.getWidth() - @as(f32, @floatFromInt(256 * (i + 1)));
                 const item = self.dicePackContents.items[i];
                 const die = item.die.?;
                 rl.drawTexturePro(
@@ -375,7 +376,7 @@ pub const ShopMap = struct {
                         .height = 256,
                     },
                     .{
-                        .x = dest - 64,
+                        .x = item.pos.x - 64,
                         .y = item.pos.y - 64,
                         .width = 256,
                         .height = 256,
@@ -394,7 +395,7 @@ pub const ShopMap = struct {
                         .height = 128,
                     },
                     .{
-                        .x = dest,
+                        .x = item.pos.x,
                         .y = item.pos.y,
                         .width = 128,
                         .height = 128,

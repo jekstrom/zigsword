@@ -279,6 +279,8 @@ pub const Player = struct {
             const st = try std.fmt.allocPrintZ(state.allocator, "Not Enough Gold", .{});
             try state.messages.?.append(st);
             return false;
+        } else {
+            self.gold -= shopItem.price;
         }
         if (shopItem.die != null) {
             if (self.dice.?.items.len >= self.maxDice) {
@@ -287,7 +289,6 @@ pub const Player = struct {
             }
 
             try self.dice.?.append(shopItem.die.?);
-            self.gold -= shopItem.price;
         }
         if (shopItem.healthPotion != null and state.adventurer.health < 100) {
             // TODO: Add consumable inventory

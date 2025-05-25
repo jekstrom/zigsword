@@ -4,11 +4,13 @@ const enums = @import("../enums.zig");
 const s = @import("state.zig");
 const d = @import("../die.zig");
 const HealthPotion = @import("./healthpotion.zig").HealthPotion;
+const DicePack = @import("dicePack.zig").DicePack;
 
 pub const ShopItem = struct {
     name: [:0]const u8,
     die: ?*d.Die,
     healthPotion: ?*HealthPotion,
+    pack: ?DicePack,
     price: u8,
     pos: rl.Vector2,
     texture: rl.Texture,
@@ -34,9 +36,15 @@ pub const ShopItem = struct {
     pub fn deinit(self: *@This(), state: *s.State) void {
         if (self.die != null) {
             state.allocator.destroy(self.die.?);
+            self.die = null;
         }
         if (self.healthPotion != null) {
             state.allocator.destroy(self.healthPotion.?);
+            self.healthPotion = null;
+        }
+        if (self.pack != null) {
+            self.pack.?.deinit(state);
+            self.pack = null;
         }
     }
 };
