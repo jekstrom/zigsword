@@ -245,6 +245,7 @@ pub const ShopMap = struct {
                 while (i < self.dicePackContents.items.len) : (i += 1) {
                     self.dicePackContents.items[i].deinit(state);
                 }
+                self.dicePackContents.clearAndFree();
             }
         }
         if (self.mode == .NORMAL) {
@@ -365,44 +366,45 @@ pub const ShopMap = struct {
             for (0..self.dicePackContents.items.len) |i| {
                 const dest: f32 = state.grid.getWidth() - @as(f32, @floatFromInt(256 * (i + 1)));
                 const item = self.dicePackContents.items[i];
-                const die = item.die.?;
-                rl.drawTexturePro(
-                    item.texture,
-                    .{
-                        .x = 0,
-                        .y = 0,
-                        .width = 256,
-                        .height = 256,
-                    },
-                    .{
-                        .x = dest - 64,
-                        .y = item.pos.y - 64,
-                        .width = 256,
-                        .height = 256,
-                    },
-                    .{ .x = 0, .y = 0 },
-                    0.0,
-                    .white,
-                );
+                if (item.die) |die| {
+                    rl.drawTexturePro(
+                        item.texture,
+                        .{
+                            .x = 0,
+                            .y = 0,
+                            .width = 256,
+                            .height = 256,
+                        },
+                        .{
+                            .x = dest - 64,
+                            .y = item.pos.y - 64,
+                            .width = 256,
+                            .height = 256,
+                        },
+                        .{ .x = 0, .y = 0 },
+                        0.0,
+                        .white,
+                    );
 
-                rl.drawTexturePro(
-                    die.texture.?,
-                    .{
-                        .x = 0,
-                        .y = 0,
-                        .width = 128,
-                        .height = 128,
-                    },
-                    .{
-                        .x = dest,
-                        .y = item.pos.y,
-                        .width = 128,
-                        .height = 128,
-                    },
-                    .{ .x = 0, .y = 0 },
-                    0.0,
-                    .white,
-                );
+                    rl.drawTexturePro(
+                        die.texture.?,
+                        .{
+                            .x = 0,
+                            .y = 0,
+                            .width = 128,
+                            .height = 128,
+                        },
+                        .{
+                            .x = dest,
+                            .y = item.pos.y,
+                            .width = 128,
+                            .height = 128,
+                        },
+                        .{ .x = 0, .y = 0 },
+                        0.0,
+                        .white,
+                    );
+                }
             }
         }
     }
