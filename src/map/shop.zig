@@ -19,10 +19,10 @@ pub const ShopMap = struct {
     mode: ShopMode,
     dicePackContents: std.ArrayList(shop.ShopItem),
 
-    pub fn init(allocator: std.mem.Allocator) ShopMap {
+    pub fn init(allocator: std.mem.Allocator) !ShopMap {
         return .{
-            .shopItems = std.ArrayList(shop.ShopItem).init(allocator),
-            .dicePackContents = std.ArrayList(shop.ShopItem).init(allocator),
+            .shopItems = try std.ArrayList(shop.ShopItem).initCapacity(allocator, 512),
+            .dicePackContents = try std.ArrayList(shop.ShopItem).initCapacity(allocator, 512),
             .mode = .NORMAL,
         };
     }
@@ -33,11 +33,11 @@ pub const ShopMap = struct {
                 self.shopItems.items[i].deinit(state);
             }
         }
-        self.shopItems.deinit();
+        self.shopItems.deinit(state.allocator.*);
         for (0..self.dicePackContents.items.len) |i| {
             self.dicePackContents.items[i].deinit(state);
         }
-        self.dicePackContents.deinit();
+        self.dicePackContents.deinit(state.allocator.*);
     }
 
     pub fn generateAlchemyItem(self: *@This(), ingredients: *anyopaque) void {
@@ -47,8 +47,8 @@ pub const ShopMap = struct {
         // Runes and Dice can be crafted.
     }
 
-    pub fn addShopItem(self: *@This(), item: shop.ShopItem) !void {
-        try self.shopItems.append(item);
+    pub fn addShopItem(self: *@This(), allocator: std.mem.Allocator, item: shop.ShopItem) !void {
+        try self.shopItems.append(allocator, item);
     }
 
     pub fn generateRandomShopItems(self: *@This(), state: *s.State) !void {
@@ -60,7 +60,7 @@ pub const ShopMap = struct {
             const pos: rl.Vector2 = .{ .x = -256, .y = state.grid.getCenterPos().y };
             // const st = try std.fmt.allocPrintZ(state.allocator, "Dice Pack", .{});
             const pack: DicePack = DicePack.init("Dice Pack", 3, pos, state.textureMap.get(.BOOSTER1).?);
-            try self.addShopItem(.{
+            try self.addShopItem(state.allocator.*, .{
                 .name = pack.name,
                 .price = 3,
                 .die = null,
@@ -211,11 +211,10 @@ pub const ShopMap = struct {
                     item.purchased = true;
                     if (item.pack != null) {
                         self.mode = .OPENPACK;
-                        const packContents: std.ArrayList(*Die) = try DicePack.getRandomDice(3, state);
-                        defer packContents.deinit();
+                        var packContents: std.ArrayList(*Die) = try DicePack.getRandomDice(3, state);
                         for (0..packContents.items.len) |x| {
                             const die = packContents.items[x];
-                            try self.dicePackContents.append(.{
+                            try self.dicePackContents.append(state.allocator.*, .{
                                 .name = die.name,
                                 .price = die.sellPrice,
                                 .die = die,
@@ -226,6 +225,7 @@ pub const ShopMap = struct {
                                 .purchased = false,
                             });
                         }
+                        defer packContents.deinit(state.allocator.*);
                     }
                 }
             }
@@ -233,19 +233,19 @@ pub const ShopMap = struct {
     }
     pub fn draw(self: *@This(), state: *s.State) !void {
         const dt = rl.getFrameTime();
-        if (ui.guiButton(.{ .x = 160, .y = 200, .height = 45, .width = 100 }, "Sell Die") > 0) {
+        if (ui.button(.{ .x = 160, .y = 200, .height = 45, .width = 100 }, "Sell Die")) {
             if (state.player.dice != null) {
                 _ = try state.player.sellSelectedDice(state);
             }
         }
         if (self.mode == .OPENPACK) {
-            if (ui.guiButton(.{ .x = 160, .y = 250, .height = 45, .width = 100 }, "Skip") > 0) {
+            if (ui.button(.{ .x = 160, .y = 250, .height = 45, .width = 100 }, "Skip")) {
                 self.mode = .NORMAL;
                 var i: u8 = 0;
                 while (i < self.dicePackContents.items.len) : (i += 1) {
                     self.dicePackContents.items[i].deinit(state);
                 }
-                self.dicePackContents.clearAndFree();
+                self.dicePackContents.clearAndFree(state.allocator.*);
             }
         }
         if (self.mode == .NORMAL) {

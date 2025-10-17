@@ -191,14 +191,13 @@ pub const BasicDie = struct {
         }
 
         if (hover) {
-            var string = std.ArrayList(u8).init(state.allocator);
-            defer string.deinit();
+            var string = try std.ArrayList(u8).initCapacity(state.allocator.*, 128);
             if (self.tooltip.len > 0) {
-                const tt = try concatStrings(state.allocator, self.name, self.tooltip);
+                const tt = try concatStrings(state.allocator.*, self.name, self.tooltip);
                 defer state.allocator.free(tt);
-                try string.appendSlice(tt);
+                try string.appendSlice(state.allocator.*, tt);
             } else {
-                try string.appendSlice(self.name);
+                try string.appendSlice(state.allocator.*, self.name);
             }
 
             rl.drawRectangle(
@@ -228,6 +227,7 @@ pub const BasicDie = struct {
                     self.selected = !self.selected;
                 }
             }
+            defer string.deinit(state.allocator.*);
         } else {
             self.hovered = false;
         }

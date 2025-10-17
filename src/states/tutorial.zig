@@ -53,7 +53,7 @@ pub const TutorialState = struct {
             };
 
             if (self.tutorialStep.* == 0) {
-                if (ui.guiMessageBox(
+                if (ui.messageBox(
                     messageRect,
                     "YOU",
                     "Greetings Adventurer!",
@@ -80,7 +80,7 @@ pub const TutorialState = struct {
                     .x = (state.grid.getWidth() - 500) / 2,
                     .y = (state.grid.getHeight() - state.grid.getGroundY()) / 2,
                 };
-                if (ui.guiTextInputBox(
+                if (ui.textInputBox(
                     messageRect2,
                     "ADVENTURER",
                     "Woah, a talking sword! What do they call you?",
@@ -113,7 +113,7 @@ pub const TutorialState = struct {
                     .{state.player.name},
                 ) catch "";
 
-                if (ui.guiMessageBox(
+                if (ui.messageBox(
                     messageRect,
                     state.player.name,
                     &buffer,
@@ -135,12 +135,12 @@ pub const TutorialState = struct {
 
             if (self.tutorialStep.* == 3) {
                 const sx = try concatStrings(
-                    state.allocator,
+                    state.allocator.*,
                     state.player.name,
                     "? stange name for a sword. Let's go!",
                 );
                 defer state.allocator.free(sx);
-                if (ui.guiMessageBox(
+                if (ui.messageBox(
                     messageRect,
                     "ADVENTURER",
                     sx,

@@ -35,7 +35,7 @@ pub const ShopState = struct {
         // Add alchemy bench to craft runes
         // Add ability to sell dice
         //
-        if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop") > 0) {
+        if (ui.button(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Exit Shop")) {
             self.isComplete = true;
         }
     }

@@ -80,7 +80,7 @@ pub const AltarWalkingEvent = struct {
             .x = center.x - (messageHeight / 2),
             .y = center.y - (messageWidth / 2),
         };
-        const result = ui.guiMessageBox(
+        const result = ui.messageBox(
             messageRect,
             self.name,
             "You encounter an altar to $DEITY",
@@ -97,7 +97,7 @@ pub const AltarWalkingEvent = struct {
         }
         if (result == 2) {
             const success = self.alignment == state.player.alignment;
-            try state.player.altarHistory.?.append(.{
+            try state.player.altarHistory.?.append(state.allocator.*, .{
                 .name = self.name,
                 .success = success,
             });

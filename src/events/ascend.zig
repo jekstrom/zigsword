@@ -57,7 +57,7 @@ pub const AscendWalkingEvent = struct {
 
         if (state.player.runes.?.items.len >= 3) {
             const msg = "You have recovered enough memories\nto attempt to restore your past.\nTo ascend, you will have to leave a tithe of all your gold.\nWould you like to ascend?";
-            const result = ui.guiMessageBox(
+            const result = ui.messageBox(
                 messageRect,
                 "Ascend",
                 msg,
@@ -79,7 +79,7 @@ pub const AscendWalkingEvent = struct {
             }
         } else {
             const msg = "You lack the runes necessary to ascend.";
-            const result = ui.guiMessageBox(
+            const result = ui.messageBox(
                 messageRect,
                 "Ascend",
                 msg,

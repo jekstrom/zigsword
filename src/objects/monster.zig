@@ -15,7 +15,7 @@ pub const Monster = struct {
     dying: bool,
     gold: u8,
     runes: ?std.ArrayList(*Rune),
-    messages: ?std.ArrayList([:0]const u8),
+    messages: ?*std.ArrayList([:0]const u8),
     monsterMsgDecay: u8 = 255,
 
     pub fn enter(self: *@This(), state: *s.State, dt: f32) bool {
@@ -41,10 +41,10 @@ pub const Monster = struct {
                 try self.runes.?.items[i].deinit(state);
                 state.allocator.destroy(self.runes.?.items[i]);
             }
-            self.runes.?.deinit();
+            self.runes.?.deinit(state.allocator.*);
         }
         if (self.messages) |messages| {
-            messages.deinit();
+            messages.deinit(state.allocator.*);
         }
     }
 
@@ -57,8 +57,9 @@ pub const Monster = struct {
             state.adventurer.health -= damage;
 
             if (state.player.messages != null) {
-                const st = try std.fmt.allocPrintZ(state.allocator, "{d}", .{damage});
-                try state.player.messages.?.append(st);
+                const sentinel = 0;
+                const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{d}", .{damage}, sentinel);
+                try state.player.messages.?.append(state.allocator.*, st);
             }
         }
     }

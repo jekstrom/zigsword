@@ -26,8 +26,18 @@ pub const Cell = struct {
     c: usize = 0,
     textures: std.ArrayList(CellTexture),
 
-    pub fn clearTextures(self: *@This()) void {
-        self.textures.clearAndFree();
+    // const List = std.ArrayList(CellTexture);
+    //
+    // pub fn init(self: *@This(), allocator: std.mem.Allocator) void {
+    //     self.textures = try List.initCapacity(allocator.*, 1024);
+    // }
+
+    pub fn clearTextures(self: *@This(), allocator: std.mem.Allocator) void {
+        if (self.textures.items.len > 0 and self.textures.capacity > 0) {
+            std.debug.print("----- textures -----\n", .{});
+            std.debug.print("{*} = len: {d}, capacity: {d}\n", .{ self.textures.items, self.textures.items.len, self.textures.capacity });
+            self.textures.deinit(allocator);
+        }
     }
 
     pub fn draw(self: @This(), cellSize: f32) void {
@@ -72,10 +82,10 @@ pub const Grid = struct {
     cellSize: i32,
     cells: [Grid.numRows][Grid.numCols]Cell,
 
-    pub fn clearTextures(self: *@This()) void {
+    pub fn clearTextures(self: *@This(), allocator: std.mem.Allocator) void {
         for (0..@as(usize, @intCast(Grid.numRows))) |r| {
             for (0..@as(usize, @intCast(Grid.numCols))) |c| {
-                self.cells[r][c].clearTextures();
+                self.cells[r][c].clearTextures(allocator);
             }
         }
     }

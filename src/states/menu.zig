@@ -50,7 +50,7 @@ pub const MenuState = struct {
             .white,
         );
 
-        if (ui.guiButton(.{ .x = center.x - 40, .y = center.y, .height = 40, .width = 100 }, "Start") > 0) {
+        if (ui.button(.{ .x = center.x - 40, .y = center.y, .height = 40, .width = 100 }, "Start")) {
             std.debug.print("Menu start: {}\n", .{self.isComplete});
             self.isComplete = true;
         }

@@ -41,6 +41,8 @@ pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
     }
 
     if (state.player.name.len > 0) {
+        std.debug.print("----player name-----\n", .{});
+        std.debug.print("----{d} - {s}----\n", .{ state.player.name.len, state.player.name });
         rl.drawText(
             state.player.name,
             250,
@@ -220,8 +222,13 @@ pub fn main() anyerror!void {
     var gpa = std.heap.GeneralPurposeAllocator(.{
         .enable_memory_limit = true,
         .safety = true,
+        .verbose_log = true,
     }){};
-    const allocator = gpa.allocator();
+    var allocator = &gpa.allocator();
+
+    std.debug.print("----- allocator MAIN -----\n", .{});
+    std.debug.print(",,{*},,\n", .{allocator.ptr});
+
     defer _ = gpa.deinit();
 
     const List = std.ArrayList(@import("objects/grid.zig").CellTexture);
@@ -233,7 +240,7 @@ pub fn main() anyerror!void {
     const PlayerRescued = std.ArrayList(enums.Rescues);
     const PlayerKilled = std.ArrayList(enums.Rescues);
 
-    var map = std.AutoHashMap(enums.TextureType, rl.Texture).init(allocator);
+    var map = std.AutoHashMap(enums.TextureType, rl.Texture).init(allocator.*);
     defer map.deinit();
 
     try textures.loadAndMapAllTextures(&map);
@@ -272,7 +279,7 @@ pub fn main() anyerror!void {
             .pos = .{ .x = 0, .y = 0 },
             .rotation = 180.0,
             .equiped = false,
-            .name = undefined,
+            .name = &newName,
             .alignment = .GOOD,
             .altarHistory = null,
             .blessed = false,
@@ -306,7 +313,7 @@ pub fn main() anyerror!void {
                     .id = 0,
                     .hover = false,
                     .pos = .{ .x = 0, .y = 0 },
-                    .textures = List.init(allocator),
+                    .textures = try List.initCapacity(allocator.*, 1024),
                 }} ** Grid.numCols,
             } ** Grid.numRows,
         },
@@ -314,7 +321,7 @@ pub fn main() anyerror!void {
         .arenaAllocator = arenaAllocator,
         .rand = rand,
         .randomNumbers = [_][Grid.numCols]u16{[_]u16{0} ** Grid.numCols} ** Grid.numRows,
-        .messages = MessageList.init(allocator),
+        .messages = try MessageList.initCapacity(allocator.*, 1024),
     };
 
     for (0..Grid.numRows) |r| {
@@ -325,15 +332,21 @@ pub fn main() anyerror!void {
 
     // Keep track of new adventurer's dialog progress
     // Set up memory for player state
-    state.player.altarHistory = AltarHistoryList.init(allocator);
-    state.player.dice = DiceList.init(allocator);
-    state.player.runes = RuneList.init(allocator);
-    state.player.messages = PlayerMessageList.init(allocator);
-    state.player.rescued = PlayerRescued.init(allocator);
-    state.player.killed = PlayerKilled.init(allocator);
+    var altarHistory = try AltarHistoryList.initCapacity(allocator.*, 128);
+    var diceList = try DiceList.initCapacity(allocator.*, 128);
+    var runeList = try RuneList.initCapacity(allocator.*, 128);
+    var playerMessageList = try PlayerMessageList.initCapacity(allocator.*, 128);
+    var playerRescued = try PlayerRescued.initCapacity(allocator.*, 128);
+    var playerKilled = try PlayerKilled.initCapacity(allocator.*, 128);
+    state.player.altarHistory = &altarHistory;
+    state.player.dice = &diceList;
+    state.player.runes = &runeList;
+    state.player.messages = &playerMessageList;
+    state.player.rescued = &playerRescued;
+    state.player.killed = &playerKilled;
 
     var statemachine = try allocator.create(@import("states/stateMachine.zig").StateMachine);
-    statemachine.allocator = &allocator;
+    statemachine.allocator = allocator;
     statemachine.state = null;
     defer allocator.destroy(statemachine);
     state.stateMachine = statemachine;
@@ -434,25 +447,25 @@ pub fn main() anyerror!void {
         if (!state.isMenu()) {
             try state.drawCurrentMapNode(dt);
 
-            _ = ui.guiDummyRec(
+            _ = ui.dummyRec(
                 uiRect,
                 "",
             );
 
-            if (ui.guiButton(.{ .x = 160, .y = 50, .height = 45, .width = 100 }, "Exit") > 0) {
+            if (ui.button(.{ .x = 160, .y = 50, .height = 45, .width = 100 }, "Exit")) {
                 break;
             }
 
-            if (ui.guiButton(.{ .x = 160, .y = 100, .height = 45, .width = 100 }, "Add gold") > 0) {
+            if (ui.button(.{ .x = 160, .y = 100, .height = 45, .width = 100 }, "Add gold")) {
                 state.player.gold += 100;
             }
         }
 
-        if (ui.guiButton(.{ .x = 50, .y = 50, .height = 45, .width = 100 }, "DEBUG") > 0) {
+        if (ui.button(.{ .x = 50, .y = 50, .height = 45, .width = 100 }, "DEBUG")) {
             s.DEBUG_MODE = !s.DEBUG_MODE;
         }
 
-        if (ui.guiButton(.{ .x = 50, .y = 100, .height = 45, .width = 100 }, "Menu") > 0) {
+        if (ui.button(.{ .x = 50, .y = 100, .height = 45, .width = 100 }, "Menu")) {
             try state.reset();
         }
 
@@ -546,7 +559,8 @@ pub fn main() anyerror!void {
                     .magenta,
                 );
             }
-            const st = try std.fmt.allocPrintZ(state.allocator, "({d}, {d})", .{ @round(mousePos.x), @round(mousePos.y) });
+            const sentinel = 0;
+            const st = try std.fmt.allocPrintSentinel(state.allocator.*, "({d}, {d})", .{ @round(mousePos.x), @round(mousePos.y) }, sentinel);
             defer state.allocator.free(st);
             rl.drawTextPro(
                 try rl.getFontDefault(),
@@ -559,7 +573,7 @@ pub fn main() anyerror!void {
                 .black,
             );
             const hoveredCell = state.grid.getHoveredCell().?;
-            const st2 = try std.fmt.allocPrintZ(state.allocator, "({d}, {d})", .{ hoveredCell.r, hoveredCell.c });
+            const st2 = try std.fmt.allocPrintSentinel(state.allocator.*, "({d}, {d})", .{ hoveredCell.r, hoveredCell.c }, sentinel);
             defer state.allocator.free(st2);
             rl.drawTextPro(
                 try rl.getFontDefault(),
@@ -598,7 +612,7 @@ pub fn main() anyerror!void {
 
     for (0..@as(usize, @intCast(Grid.numRows))) |r| {
         for (0..@as(usize, @intCast(Grid.numCols))) |c| {
-            state.grid.cells[r][c].textures.deinit();
+            state.grid.cells[r][c].textures.deinit(state.allocator.*);
         }
     }
 

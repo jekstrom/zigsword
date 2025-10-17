@@ -46,7 +46,7 @@ pub const DicePack = struct {
             d6.tooltip = "";
             d6.index = 0;
             d6.pos = pos;
-            dieToAdd = try d6.die(&state.allocator);
+            dieToAdd = try d6.die(state.allocator);
         } else if (randDie >= 40 and randDie < 80) {
             var d4 = try state.arenaAllocator.create(BasicDie);
             d4.name = "Basic d4";
@@ -61,7 +61,7 @@ pub const DicePack = struct {
             d4.tooltip = "";
             d4.index = 0;
             d4.pos = pos;
-            dieToAdd = try d4.die(&state.allocator);
+            dieToAdd = try d4.die(state.allocator);
         } else if (randDie >= 80 and randDie < 90) {
             var d4 = try state.arenaAllocator.create(MultDie);
             d4.name = "Mult d4";
@@ -76,7 +76,7 @@ pub const DicePack = struct {
             d4.tooltip = "";
             d4.index = 0;
             d4.pos = pos;
-            dieToAdd = try d4.die(&state.allocator);
+            dieToAdd = try d4.die(state.allocator);
         } else if (randDie >= 90) {
             var d6 = try state.arenaAllocator.create(MultDie);
             d6.name = "Mult d6";
@@ -91,19 +91,19 @@ pub const DicePack = struct {
             d6.tooltip = "";
             d6.index = 0;
             d6.pos = pos;
-            dieToAdd = try d6.die(&state.allocator);
+            dieToAdd = try d6.die(state.allocator);
         }
 
         return dieToAdd.?;
     }
 
     pub fn getRandomDice(num: u8, state: *s.State) !std.ArrayList(*d.Die) {
-        var dice = std.ArrayList(*d.Die).init(state.arenaAllocator);
+        var dice = try std.ArrayList(*d.Die).initCapacity(state.arenaAllocator, 128);
         var i: u8 = 0;
         while (i < num) : (i += 1) {
             const dieToAdd = try getRandomDie(state);
             std.debug.print("Added die {s}\n", .{dieToAdd.name});
-            try dice.append(dieToAdd);
+            try dice.append(state.arenaAllocator, dieToAdd);
         }
         return dice;
     }

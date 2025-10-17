@@ -49,11 +49,11 @@ pub const GameEndState = struct {
         // Display leaderboard (local)
         // Show unlocks
         // achievements this run ?
-        var string = std.ArrayList(u8).init(state.allocator);
-        defer string.deinit();
-        const st = try std.fmt.allocPrint(state.allocator, "{d} Kills", .{state.player.monstersKilled});
+        var string = try std.ArrayList(u8).initCapacity(state.allocator.*, 128);
+        defer string.deinit(state.allocator.*);
+        const st = try std.fmt.allocPrint(state.allocator.*, "{d} Kills", .{state.player.monstersKilled});
         defer state.allocator.free(st);
-        try string.appendSlice(st);
+        try string.appendSlice(state.allocator.*, st);
 
         const center = state.grid.getCenterPos();
         const messageHeight = 200;
@@ -69,7 +69,7 @@ pub const GameEndState = struct {
             .x = center.x - (messageWidth / 2),
             .y = center.y - (messageHeight / 2),
         };
-        const result = ui.guiMessageBox(
+        const result = ui.messageBox(
             messageRect,
             "Game Over",
             sresult,

@@ -19,20 +19,22 @@ pub const Player = struct {
     equiped: bool,
     name: [:0]u8,
     alignment: enums.Alignment,
-    altarHistory: ?std.ArrayList(ah.AltarHistory),
+    altarHistory: ?*std.ArrayList(ah.AltarHistory),
     blessed: bool,
-    dice: ?std.ArrayList(*d.Die),
+    dice: ?*std.ArrayList(*d.Die),
     maxDice: u8,
     durability: u8,
     gold: i32,
     maxSelectedDice: u8,
-    messages: ?std.ArrayList([:0]const u8),
+    messages: ?*std.ArrayList([:0]const u8),
     playerMsgDecay: u8 = 255,
     monstersKilled: u8 = 0,
     stateMachine: ?@import("../states/stateMachine.zig").StateMachine,
-    runes: ?std.ArrayList(*Rune),
-    rescued: ?std.ArrayList(enums.Rescues),
-    killed: ?std.ArrayList(enums.Rescues),
+    runes: ?*std.ArrayList(*Rune),
+    rescued: ?*std.ArrayList(enums.Rescues),
+    killed: ?*std.ArrayList(enums.Rescues),
+
+    const sentinel = 0;
 
     pub fn reset(self: *@This(), state: *s.State) !void {
         self.pos = .{ .x = 0, .y = 0 };
@@ -51,7 +53,7 @@ pub const Player = struct {
                 try die.deinit(state);
                 state.allocator.destroy(die);
             }
-            self.dice.?.clearAndFree();
+            self.dice.?.clearAndFree(state.allocator.*);
         }
 
         if (self.runes != null) {
@@ -59,22 +61,22 @@ pub const Player = struct {
                 const rune = self.runes.?.items[i];
                 state.allocator.destroy(rune);
             }
-            self.dice.?.clearAndFree();
+            self.dice.?.clearAndFree(state.allocator.*);
         }
 
         if (self.altarHistory != null) {
-            self.altarHistory.?.clearAndFree();
+            self.altarHistory.?.clearAndFree(state.allocator.*);
         }
 
         if (self.messages != null) {
-            self.messages.?.clearAndFree();
+            self.messages.?.clearAndFree(state.allocator.*);
         }
 
         if (self.rescued != null) {
-            self.rescued.?.clearAndFree();
+            self.rescued.?.clearAndFree(state.allocator.*);
         }
         if (self.killed != null) {
-            self.killed.?.clearAndFree();
+            self.killed.?.clearAndFree(state.allocator.*);
         }
 
         // Add initial player dice
@@ -103,9 +105,9 @@ pub const Player = struct {
                 .x = state.grid.getWidth() - 550 + xoffset,
                 .y = topUI + 10,
             };
-            const d6die = try d6.die(&state.allocator);
+            const d6die = try d6.die(state.allocator);
 
-            try self.dice.?.append(d6die);
+            try self.dice.?.append(state.allocator.*, d6die);
         }
         xoffset += 50;
         while (dcount < numd4) : (dcount += 1) {
@@ -126,23 +128,23 @@ pub const Player = struct {
                 .x = state.grid.getWidth() - 550 + xoffset,
                 .y = topUI + 10,
             };
-            const d4die = try d4.die(&state.allocator);
+            const d4die = try d4.die(state.allocator);
 
-            try self.dice.?.append(d4die);
+            try self.dice.?.append(state.allocator.*, d4die);
         }
     }
 
     pub fn deinit(self: *@This(), state: *s.State) !void {
         std.debug.print("PLAYER DEINIT\n\n", .{});
         if (self.altarHistory) |altarHistory| {
-            altarHistory.deinit();
+            altarHistory.deinit(state.allocator.*);
         }
         if (self.dice) |dice| {
             for (0..dice.items.len) |i| {
                 try dice.items[i].deinit(state);
                 state.allocator.destroy(dice.items[i]);
             }
-            dice.deinit();
+            dice.deinit(state.allocator.*);
         }
 
         if (self.messages != null) {
@@ -150,20 +152,20 @@ pub const Player = struct {
                 std.debug.print("Freeing player message {s}\n", .{self.messages.?.items[i]});
                 state.allocator.free(self.messages.?.items[i]);
             }
-            self.messages.?.deinit();
+            self.messages.?.deinit(state.allocator.*);
         }
         if (self.runes) |runes| {
             for (0..runes.items.len) |i| {
                 var rune = runes.items[i];
                 try rune.deinit(state);
             }
-            runes.deinit();
+            runes.deinit(state.allocator.*);
         }
         if (self.rescued != null) {
-            self.rescued.?.deinit();
+            self.rescued.?.deinit(state.allocator.*);
         }
         if (self.killed != null) {
-            self.killed.?.deinit();
+            self.killed.?.deinit(state.allocator.*);
         }
         std.debug.print("PLAYER DEINIT DONE\n", .{});
     }
@@ -178,14 +180,14 @@ pub const Player = struct {
 
         // roll selected dice
         const rollResultsList = std.ArrayList(RollResult);
-        var rollResults: rollResultsList = rollResultsList.init(state.allocator);
-        defer rollResults.deinit();
+        var rollResults: rollResultsList = try rollResultsList.initCapacity(state.allocator.*, 1024);
+        defer rollResults.deinit(state.allocator.*);
 
         for (0..dice.?.items.len) |i| {
             const die = dice.?.items[i];
             if (try die.getSelected()) {
                 const rollResult = try die.roll(state, &rollResults);
-                try rollResults.append(rollResult);
+                try rollResults.append(state.allocator.*, rollResult);
                 try die.setSelected(false);
                 if (rollResults.items.len == 1) {
                     // check for dawn rune
@@ -224,7 +226,7 @@ pub const Player = struct {
         // clean up broken dice
         var i = self.dice.?.items.len;
         // Update new list with remaining dice that are not being removed.
-        var newDice = std.ArrayList(*d.Die).init(state.allocator);
+        var newDice = try std.ArrayList(*d.Die).initCapacity(state.allocator.*, 256);
 
         var removedCount: i32 = 0;
         while (i > 0) {
@@ -235,13 +237,13 @@ pub const Player = struct {
                 try removedDie.deinit(state);
                 state.allocator.destroy(removedDie);
             } else {
-                try newDice.insert(0, self.dice.?.items[i]);
+                try newDice.insert(state.allocator.*, 0, self.dice.?.items[i]);
             }
         }
 
-        self.dice.?.clearAndFree();
-        self.dice.?.deinit();
-        self.dice = newDice;
+        self.dice.?.clearAndFree(state.allocator.*);
+        self.dice.?.deinit(state.allocator.*);
+        self.dice = &newDice;
 
         var damageScaled = result;
 
@@ -257,17 +259,17 @@ pub const Player = struct {
             monster.health -= @as(u32, @intCast(damageScaled));
         }
         if (monster.messages != null) {
-            const st = try std.fmt.allocPrintZ(state.allocator, "{d}", .{damageScaled});
-            try monster.messages.?.append(st);
+            const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{d}", .{damageScaled}, sentinel);
+            try monster.messages.?.append(state.allocator.*, st);
         }
     }
 
-    pub fn addDie(self: *@This(), die: *d.Die) !void {
+    pub fn addDie(self: *@This(), allocator: std.mem.Allocator, die: *d.Die) !void {
         if (self.dice == null) {
             std.debug.assert(false);
         }
 
-        try self.dice.?.append(die);
+        try self.dice.?.append(allocator, die);
     }
 
     pub fn purchaseItem(self: *@This(), shopItem: shop.ShopItem, state: *s.State) !bool {
@@ -276,19 +278,19 @@ pub const Player = struct {
             return false;
         }
         if (self.gold < shopItem.price) {
-            const st = try std.fmt.allocPrintZ(state.allocator, "Not Enough Gold", .{});
-            try state.messages.?.append(st);
+            const st = try std.fmt.allocPrintSentinel(state.allocator.*, "Not Enough Gold", .{}, sentinel);
+            try state.messages.?.append(state.allocator.*, st);
             return false;
         } else {
             self.gold -= shopItem.price;
         }
         if (shopItem.die != null) {
             if (self.dice.?.items.len >= self.maxDice) {
-                try state.messages.?.append("No room");
+                try state.messages.?.append(state.allocator.*, "No room");
                 return false;
             }
 
-            try self.dice.?.append(shopItem.die.?);
+            try self.dice.?.append(state.allocator.*, shopItem.die.?);
         }
         if (shopItem.healthPotion != null and state.adventurer.health < 100) {
             // TODO: Add consumable inventory
@@ -406,7 +408,7 @@ pub const Player = struct {
         if (successes >= 3) {
             if (!self.blessed) {
                 self.blessed = true;
-                try self.messages.?.append("Blessed");
+                try self.messages.?.append(state.allocator.*, "Blessed");
             }
         } else if (failures >= 3) {
             if (self.alignment == .GOOD) {

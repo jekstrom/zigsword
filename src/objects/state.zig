@@ -28,7 +28,7 @@ pub const State = struct {
     phase: enums.GamePhase,
     mode: enums.GameMode,
     turn: enums.Turn,
-    allocator: std.mem.Allocator,
+    allocator: *const std.mem.Allocator,
     arenaAllocator: std.mem.Allocator,
     currentMap: u8,
     mapCount: u8,
@@ -52,6 +52,8 @@ pub const State = struct {
     tutorialStep: u4 = 0,
     selectedMap: u8,
     mapMenuInputActive: bool,
+
+    const sentinel = 0;
 
     pub fn reset(self: *@This()) !void {
         // Reset after game end.
@@ -110,9 +112,9 @@ pub const State = struct {
         // TODO: Player selection screen
         try self.player.reset(self);
 
-        const st = try std.fmt.allocPrintZ(self.allocator, "Start", .{});
-        const st2 = try std.fmt.allocPrintZ(self.allocator, "Start2", .{});
-        const st3 = try std.fmt.allocPrintZ(self.allocator, "Start3", .{});
+        const st = try std.fmt.allocPrintSentinel(self.allocator.*, "Start", .{}, sentinel);
+        const st2 = try std.fmt.allocPrintSentinel(self.allocator.*, "Start2", .{}, sentinel);
+        const st3 = try std.fmt.allocPrintSentinel(self.allocator.*, "Start3", .{}, sentinel);
         try self.generateNextMap(st, .WALKING);
         try self.generateNextMap(st2, .SHOP);
         try self.generateNextMap(st3, .SHOP);
@@ -122,9 +124,9 @@ pub const State = struct {
         self.adventurer.reset(self);
 
         // Start with Tutorial state after reset
-        const tutorialSmState: *sm.SMState = try self.tutorialState.?.smState(&self.allocator);
+        const tutorialSmState: *sm.SMState = try self.tutorialState.?.smState(self.allocator);
 
-        var menuSmState: *sm.SMState = try self.menuState.?.smState(&self.allocator);
+        var menuSmState: *sm.SMState = try self.menuState.?.smState(self.allocator);
         std.debug.print("*******Setting next state to {*}\n\n", .{tutorialSmState});
         menuSmState.nextState = tutorialSmState;
         try self.stateMachine.?.setState(menuSmState, self);
@@ -167,11 +169,11 @@ pub const State = struct {
         self.allocator.destroy(self.tutorialState.?);
         self.allocator.destroy(self.menuState.?);
         if (self.messages != null) {
-            self.messages.?.deinit();
+            self.messages.?.deinit(self.allocator.*);
         }
         if (self.map != null) {
-            var mapStack = std.ArrayList(?*m.Map).init(self.allocator);
-            defer mapStack.deinit();
+            var mapStack = try std.ArrayList(?*m.Map).initCapacity(self.allocator.*, 1024);
+            defer mapStack.deinit(self.allocator.*);
             try self.traverseMaps(self.map, &mapStack);
             var i = mapStack.items.len;
             while (i > 0) {
@@ -188,7 +190,7 @@ pub const State = struct {
             return;
         }
 
-        try stack.append(currentMap);
+        try stack.append(self.allocator.*, currentMap);
 
         if (currentMap.?.right != null) {
             try self.traverseMaps(currentMap.?.right.?, stack);
@@ -255,7 +257,7 @@ pub const State = struct {
                     try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
-                self.grid.clearTextures();
+                self.grid.clearTextures(self.allocator.*);
                 return;
             }
         }
@@ -279,7 +281,7 @@ pub const State = struct {
                     try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
-                self.grid.clearTextures();
+                self.grid.clearTextures(self.allocator.*);
                 return;
             }
         }
@@ -339,13 +341,13 @@ pub const State = struct {
 
         newMap.currentMapCount = self.mapCount;
         newMap.name = name;
-        newMap.nodes = List.init(self.allocator);
+        newMap.nodes = try List.initCapacity(self.allocator.*, 1024);
         newMap.left = null;
         newMap.right = null;
 
         for (0..numWalkingNodes) |i| {
             // Create new nodes for the map, assigning a name.
-            const st = try std.fmt.allocPrintZ(self.allocator, "{d}", .{i});
+            const st = try std.fmt.allocPrintSentinel(self.allocator.*, "{d}", .{i}, sentinel);
 
             if (nodeType == .WALKING) {
                 var outsideNode: m.MapNode = .{
@@ -360,49 +362,52 @@ pub const State = struct {
                     .stateMachine = null,
                 };
                 try outsideNode.init(self);
-                try newMap.addMapNode(outsideNode);
+                try newMap.addMapNode(self.allocator.*, outsideNode);
             } else if (nodeType == .DUNGEON) {
+                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var dungeonNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
-                    .monsters = MonsterList.init(self.allocator),
+                    .monsters = &mm,
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,
                     .stateMachine = null,
                 };
                 try dungeonNode.init(self);
-                try newMap.addMapNode(dungeonNode);
+                try newMap.addMapNode(self.allocator.*, dungeonNode);
             } else if (nodeType == .BOSS) {
+                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var dungeonNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
-                    .monsters = MonsterList.init(self.allocator),
+                    .monsters = &mm,
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,
                     .stateMachine = null,
                 };
                 try dungeonNode.init(self);
-                try newMap.addMapNode(dungeonNode);
+                try newMap.addMapNode(self.allocator.*, dungeonNode);
             } else if (nodeType == .ASCENDBOSS) {
+                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var ascendBossNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.ASCENDBOSSBACKGROUND),
-                    .monsters = MonsterList.init(self.allocator),
+                    .monsters = &mm,
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,
                     .stateMachine = null,
                 };
                 try ascendBossNode.init(self);
-                try newMap.addMapNode(ascendBossNode);
+                try newMap.addMapNode(self.allocator.*, ascendBossNode);
             } else if (nodeType == .SHOP) {
                 var shopNode: m.MapNode = .{
                     .name = st,
@@ -416,7 +421,7 @@ pub const State = struct {
                     .stateMachine = null,
                 };
                 try shopNode.init(self);
-                try newMap.addMapNode(shopNode);
+                try newMap.addMapNode(self.allocator.*, shopNode);
             } else if (nodeType == .ASCEND) {
                 var ascendNode: m.MapNode = .{
                     .name = st,
@@ -430,7 +435,7 @@ pub const State = struct {
                     .stateMachine = null,
                 };
                 try ascendNode.init(self);
-                try newMap.addMapNode(ascendNode);
+                try newMap.addMapNode(self.allocator.*, ascendNode);
             }
         }
 
@@ -438,7 +443,7 @@ pub const State = struct {
             var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
             defer arena.deinit();
             const allocator = arena.allocator();
-            var mapqueue = std.ArrayList(?*m.Map).init(allocator);
+            var mapqueue = try std.ArrayList(?*m.Map).initCapacity(allocator, 1024);
 
             var currentMap: ?*m.Map = self.map.?;
 
@@ -455,8 +460,8 @@ pub const State = struct {
                 if (currentMap.?.right) |r| {
                     std.debug.print("right: {s}\n", .{r.name});
                 }
-                try mapqueue.append(currentMap.?.left);
-                try mapqueue.append(currentMap.?.right);
+                try mapqueue.append(self.allocator.*, currentMap.?.left);
+                try mapqueue.append(self.allocator.*, currentMap.?.right);
             }
 
             if (currentMap.?.right == null) {
@@ -610,22 +615,22 @@ pub const State = struct {
 
                 if (monster != null) {
                     std.debug.print("FOUND MONSTER\n", .{});
-                    const battleSmState = try self.battleState.?.smState(&self.allocator);
+                    const battleSmState = try self.battleState.?.smState(self.allocator);
                     nextSmState = battleSmState;
                 } else if (try self.isShop()) {
                     std.debug.print("SHOP STATE\n", .{});
-                    const shopSmState = try self.shopState.?.smState(&self.allocator);
+                    const shopSmState = try self.shopState.?.smState(self.allocator);
                     nextSmState = shopSmState;
                 } else {
                     std.debug.print("WALKING STATE\n", .{});
-                    const walkingSmState = try self.walkingState.?.smState(&self.allocator);
+                    const walkingSmState = try self.walkingState.?.smState(self.allocator);
                     nextSmState = walkingSmState;
                 }
 
                 if ((self.currentNode + 1) >= numnodes) {
                     std.debug.print("Adding MAPMENU STATE as next state\n", .{});
                     self.mapMenuInputActive = true;
-                    const mapMenuSmState = try self.mapMenuState.?.smState(&self.allocator);
+                    const mapMenuSmState = try self.mapMenuState.?.smState(self.allocator);
                     nextSmState.?.nextState = mapMenuSmState;
                 }
 
@@ -640,7 +645,7 @@ pub const State = struct {
             } else if (curState.smType == .TUTORIAL) {
                 std.debug.print("TUTORIAL STATE\n", .{});
                 // Handle initial walking state
-                const walkingSmState = try self.walkingState.?.smState(&self.allocator);
+                const walkingSmState = try self.walkingState.?.smState(self.allocator);
                 try self.stateMachine.?.setState(walkingSmState, self);
             }
         }

@@ -146,7 +146,7 @@ pub const KinRune = struct {
 
         const self: *KinRune = @ptrCast(@alignCast(ptr));
         _ = self;
-        var seen = std.AutoHashMap(u16, u16).init(state.allocator);
+        var seen = std.AutoHashMap(u16, u16).init(state.allocator.*);
         defer seen.deinit();
 
         for (0..rollResults.?.items.len) |i| {
@@ -182,7 +182,7 @@ pub const KinRune = struct {
                         .x = state.grid.getWidth() - 550,
                         .y = state.grid.topUI() + 10,
                     };
-                    dieToAdd = try d4.die(&state.allocator);
+                    dieToAdd = try d4.die(state.allocator);
                 } else {
                     var d6 = try state.allocator.create(BasicDie);
                     d6.name = "Basic d6";
@@ -197,11 +197,11 @@ pub const KinRune = struct {
                         .x = state.grid.getWidth() - 550,
                         .y = state.grid.topUI() + 10,
                     };
-                    dieToAdd = try d6.die(&state.allocator);
+                    dieToAdd = try d6.die(state.allocator);
                 }
 
                 std.debug.print("Adding die {s}\n", .{dieToAdd.?.name});
-                try state.player.addDie(dieToAdd.?);
+                try state.player.addDie(state.allocator.*, dieToAdd.?);
             }
         }
     }

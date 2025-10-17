@@ -54,7 +54,7 @@ pub const BattleState = struct {
                             self.startTime = rl.getTime();
                             state.NextTurn();
                         } else if (state.turn == .PLAYER and state.player.dice != null and state.player.dice.?.items.len > 0) {
-                            if (ui.guiButton(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack") > 0) {
+                            if (ui.button(.{ .x = 160, .y = 150, .height = 45, .width = 100 }, "Attack")) {
                                 try state.player.attack(state, monster.?);
                                 self.startTime = rl.getTime();
                                 state.NextTurn();
@@ -82,8 +82,8 @@ pub const BattleState = struct {
         const currentMapNode = try state.getCurrentMapNode();
 
         var totalGold: u8 = 0;
-        var totalRunes = std.ArrayList(*Rune).init(state.allocator);
-        defer totalRunes.deinit();
+        var totalRunes = try std.ArrayList(*Rune).initCapacity(state.allocator.*, 128);
+        defer totalRunes.deinit(state.allocator.*);
 
         if (currentMapNode) |cn| {
             for (0..cn.monsters.?.items.len) |i| {
@@ -95,7 +95,7 @@ pub const BattleState = struct {
                 if (runes != null and runes.?.items.len > 0) {
                     for (0..runes.?.items.len) |r| {
                         const rune: *Rune = runes.?.items[r];
-                        try totalRunes.append(rune);
+                        try totalRunes.append(state.allocator.*, rune);
                     }
                 }
             }
@@ -105,7 +105,9 @@ pub const BattleState = struct {
         const messageHeight = 200;
         const messageWidth = 500;
 
-        const string = try std.fmt.allocPrintZ(state.allocator, " {d}gp", .{totalGold});
+        const sentinel = 0;
+        const string = try std.fmt.allocPrintSentinel(state.allocator.*, " {d}gp", .{totalGold}, sentinel);
+
         defer state.allocator.free(string);
 
         const messageRect: rl.Rectangle = .{
@@ -114,7 +116,7 @@ pub const BattleState = struct {
             .x = center.x - (messageWidth / 2),
             .y = center.y - (messageHeight / 2),
         };
-        const result = ui.guiMessageBox(
+        const result = ui.messageBox(
             messageRect,
             "Loot",
             string,
@@ -144,7 +146,7 @@ pub const BattleState = struct {
                         .y = state.grid.topUI() + 75.0,
                     });
                     state.currentSelectedRuneCount = 0;
-                    try state.player.runes.?.append(rune);
+                    try state.player.runes.?.append(state.allocator.*, rune);
                 }
             }
 

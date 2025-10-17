@@ -168,7 +168,8 @@ pub const FateRune = struct {
         std.debug.print("Next result: {d}\n", .{nextResult});
 
         if (nextResult > 0) {
-            const st = try std.fmt.allocPrintZ(state.allocator, "\nWill roll {d}", .{nextResult});
+            const sentinel = 0;
+            const st = try std.fmt.allocPrintSentinel(state.allocator.*, "\nWill roll {d}", .{nextResult}, sentinel);
 
             std.debug.print("Set tooltip\n", .{});
             try d.setTooltip(st);

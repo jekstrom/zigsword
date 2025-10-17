@@ -1,6 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const enums = @import("../enums.zig");
+const enums = @import("enums.zig");
 const s = @import("objects/state.zig");
 const RollResult = @import("dice/rollresult.zig").RollResult;
 

@@ -76,7 +76,7 @@ pub const TreasureWalkingEvent = struct {
             .x = center.x - (messageHeight / 2),
             .y = center.y - (messageWidth / 2),
         };
-        const result = ui.guiMessageBox(
+        const result = ui.messageBox(
             messageRect,
             self.name,
             "You find a treasure chest",

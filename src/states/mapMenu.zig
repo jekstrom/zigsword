@@ -77,7 +77,7 @@ pub const MapMenuState = struct {
 
         self.drawTree(currentMap.?, null, state, 0.0, .center);
 
-        if (ui.guiButton(.{ .x = state.grid.getWidth() - 250, .y = state.grid.getHeight() - 80, .height = 40, .width = 100 }, "Go") > 0) {
+        if (ui.button(.{ .x = state.grid.getWidth() - 250, .y = state.grid.getHeight() - 80, .height = 40, .width = 100 }, "Go")) {
             if (self.selectedMap > 0) {
                 state.selectedMap = self.selectedMap;
             }

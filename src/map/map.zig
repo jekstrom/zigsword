@@ -22,7 +22,7 @@ pub const MapNode = struct {
     type: MapNodeType,
     texture: ?rl.Texture,
     background: ?rl.Texture,
-    monsters: ?std.ArrayList(mob.Monster),
+    monsters: ?*std.ArrayList(mob.Monster),
     monstersEntered: bool,
     event: ?*Event,
     shopMap: ?ShopMap,
@@ -44,7 +44,7 @@ pub const MapNode = struct {
             for (0..monsters.items.len) |i| {
                 try monsters.items[i].deinit(state);
             }
-            monsters.deinit();
+            monsters.deinit(state.allocator.*);
         }
         if (self.shopMap != null) {
             self.shopMap.?.deinit(state);
@@ -83,7 +83,7 @@ pub const MapNode = struct {
                     .x = groundCenter.x + 100,
                     .y = groundCenter.y - 110,
                 };
-                const event = try walkingEvent.event(&state.allocator);
+                const event = try walkingEvent.event(state.allocator);
                 self.event = event;
             }
             if (nodeContents > 13) {
@@ -99,7 +99,7 @@ pub const MapNode = struct {
                     .x = groundCenter.x + 100,
                     .y = groundCenter.y - 110,
                 };
-                const event = try rescueEvent.event(&state.allocator);
+                const event = try rescueEvent.event(state.allocator);
                 self.event = event;
             }
         }
@@ -119,7 +119,7 @@ pub const MapNode = struct {
                 .x = groundCenter.x + 100,
                 .y = groundCenter.y - 110,
             };
-            const event = try walkingEvent.event(&state.allocator);
+            const event = try walkingEvent.event(state.allocator);
             self.event = event;
         }
 
@@ -131,7 +131,7 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 305.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const kr = try kinRune.rune(&state.allocator);
+            const kr = try kinRune.rune(state.allocator);
 
             var fateRune: *FateRune = try state.allocator.create(FateRune);
 
@@ -140,7 +140,7 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 225.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const fr = try fateRune.rune(&state.allocator);
+            const fr = try fateRune.rune(state.allocator);
 
             var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
 
@@ -149,16 +149,17 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 225.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const dr = try dawnRune.rune(&state.allocator);
+            const dr = try dawnRune.rune(state.allocator);
 
-            var runes = MonsterRunes.init(state.allocator);
+            var runes = try MonsterRunes.initCapacity(state.allocator.*, 128);
             // TOOD: Determine runes randomly
-            try runes.append(kr);
-            try runes.append(fr);
-            try runes.append(dr);
+            try runes.append(state.allocator.*, kr);
+            try runes.append(state.allocator.*, fr);
+            try runes.append(state.allocator.*, dr);
 
             std.debug.print("Adding Boss to node {s}\n", .{self.name});
-            try self.addMonster(.{
+            var mm = try MonsterMessages.initCapacity(state.allocator.*, 128);
+            try self.addMonster(state.allocator, .{
                 .name = "Boss",
                 .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                 .nameKnown = false,
@@ -169,7 +170,8 @@ pub const MapNode = struct {
                 .dying = false,
                 .gold = state.rand.intRangeAtMost(u8, 10, 25),
                 .runes = runes,
-                .messages = MonsterMessages.init(state.allocator),
+                // todo: keep a references to this in the monster itself on init
+                .messages = &mm,
             });
         }
 
@@ -180,7 +182,7 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 305.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const kr = try kinRune.rune(&state.allocator);
+            const kr = try kinRune.rune(state.allocator);
 
             var fateRune: *FateRune = try state.allocator.create(FateRune);
             fateRune.name = "Fate";
@@ -188,7 +190,7 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 225.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const fr = try fateRune.rune(&state.allocator);
+            const fr = try fateRune.rune(state.allocator);
 
             var dawnRune: *DawnRune = try state.allocator.create(DawnRune);
             dawnRune.name = "Dawn";
@@ -196,16 +198,17 @@ pub const MapNode = struct {
                 .x = state.grid.getWidth() - 225.0,
                 .y = state.grid.topUI() + 75.0,
             };
-            const dr = try dawnRune.rune(&state.allocator);
+            const dr = try dawnRune.rune(state.allocator);
 
-            var runes = MonsterRunes.init(state.allocator);
+            var runes = try MonsterRunes.initCapacity(state.allocator.*, 128);
             // TOOD: Determine runes randomly
-            try runes.append(kr);
-            try runes.append(fr);
-            try runes.append(dr);
+            try runes.append(state.allocator.*, kr);
+            try runes.append(state.allocator.*, fr);
+            try runes.append(state.allocator.*, dr);
 
             std.debug.print("Adding Ascend Boss to node {s}\n", .{self.name});
-            try self.addMonster(.{
+            var mm = try MonsterMessages.initCapacity(state.allocator.*, 128);
+            try self.addMonster(state.allocator, .{
                 .name = "Ascend Boss",
                 .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                 .nameKnown = false,
@@ -216,14 +219,15 @@ pub const MapNode = struct {
                 .dying = false,
                 .gold = state.rand.intRangeAtMost(u8, 10, 55),
                 .runes = runes,
-                .messages = MonsterMessages.init(state.allocator),
+                .messages = &mm,
             });
         }
 
         if (self.type == .DUNGEON) {
             if (nodeContents <= 4) {
                 std.debug.print("Adding Green Goblin to node {s}\n", .{self.name});
-                try self.addMonster(.{
+                var mm = try MonsterMessages.initCapacity(state.allocator.*, 128);
+                try self.addMonster(state.allocator, .{
                     .name = "Green Goblin",
                     .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                     .nameKnown = false,
@@ -234,11 +238,12 @@ pub const MapNode = struct {
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 1, 4),
                     .runes = null,
-                    .messages = MonsterMessages.init(state.allocator),
+                    .messages = &mm,
                 });
             } else if (nodeContents > 4 and nodeContents <= 8) {
                 std.debug.print("Adding Red Goblin to node {s}\n", .{self.name});
-                try self.addMonster(.{
+                var mm = try MonsterMessages.initCapacity(state.allocator.*, 128);
+                try self.addMonster(state.allocator, .{
                     .name = "Red Goblin",
                     .pos = .{ .x = state.grid.getWidth(), .y = state.grid.getGroundY() - 110 },
                     .nameKnown = false,
@@ -249,7 +254,7 @@ pub const MapNode = struct {
                     .dying = false,
                     .gold = state.rand.intRangeAtMost(u8, 2, 6),
                     .runes = null,
-                    .messages = MonsterMessages.init(state.allocator),
+                    .messages = &mm,
                 });
             } else if (nodeContents > 8 and nodeContents <= 15) {
                 std.debug.print("Adding Treasure Chest to node {s}\n", .{self.name});
@@ -264,13 +269,13 @@ pub const MapNode = struct {
                     .x = groundCenter.x + 100,
                     .y = groundCenter.y - 110,
                 };
-                const event = try walkingEvent.event(&state.allocator);
+                const event = try walkingEvent.event(state.allocator);
                 self.event = event;
             }
         }
 
         if (self.type == .SHOP) {
-            var shopMap = ShopMap.init(state.allocator);
+            var shopMap = try ShopMap.init(state.allocator.*);
             try shopMap.generateRandomShopItems(state);
             self.shopMap = shopMap;
         }
@@ -280,8 +285,8 @@ pub const MapNode = struct {
         self.texture = texture;
     }
 
-    pub fn addMonster(self: *@This(), monster: mob.Monster) !void {
-        try self.monsters.?.append(monster);
+    pub fn addMonster(self: *@This(), allocator: *const std.mem.Allocator, monster: mob.Monster) !void {
+        try self.monsters.?.append(allocator.*, monster);
     }
 
     pub fn addShopItem(self: *@This(), shopItem: shop.ShopItem) !void {
@@ -329,7 +334,7 @@ pub const MapNode = struct {
                         gameEndState.nextState = null;
                         gameEndState.isComplete = false;
                         gameEndState.startTime = rl.getTime();
-                        const gameEndSmState = try gameEndState.smState(&state.allocator);
+                        const gameEndSmState = try gameEndState.smState(state.allocator);
 
                         try state.stateMachine.?.setState(gameEndSmState, state);
                     }
@@ -387,7 +392,8 @@ pub const MapNode = struct {
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
                     const row: usize = state.grid.cells.len - 4;
-                    state.grid.cells[row][i].textures.clearAndFree();
+                    std.debug.print("Clearing textures for cell ({d}, {d})\n", .{ row, i });
+                    state.grid.cells[row][i].clearTextures(state.allocator.*);
 
                     const textureWidth = 215;
                     const textureHeight = 250;
@@ -411,7 +417,7 @@ pub const MapNode = struct {
                         );
                         const rd = state.getConsistentRandomNumber(row, i, 0, 20);
 
-                        try state.grid.cells[row][i].textures.append(.{
+                        try state.grid.cells[row][i].textures.append(state.allocator.*, .{
                             .texture = texture,
                             .textureOffset = rockOffsetRect,
                             .displayOffset = .{
@@ -422,7 +428,7 @@ pub const MapNode = struct {
                         });
                     }
 
-                    try state.grid.cells[row][i].textures.append(.{
+                    try state.grid.cells[row][i].textures.append(state.allocator.*, .{
                         .texture = texture,
                         .textureOffset = offsetRect,
                         .displayOffset = .{ .x = 0, .y = 0 },
@@ -449,7 +455,7 @@ pub const MapNode = struct {
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
                     const row = state.grid.cells.len - 4;
-                    state.grid.cells[row][i].textures.clearAndFree();
+                    state.grid.cells[row][i].textures.clearAndFree(state.allocator.*);
 
                     const textureWidth = 118;
                     const textureHeight = 118;
@@ -462,7 +468,7 @@ pub const MapNode = struct {
                         @floatFromInt(textureHeight),
                     );
 
-                    try state.grid.cells[row][i].textures.append(.{
+                    try state.grid.cells[row][i].textures.append(state.allocator.*, .{
                         .texture = texture,
                         .textureOffset = offsetRect,
                         .displayOffset = .{ .x = 0, .y = 0 },
@@ -495,8 +501,8 @@ pub const Map = struct {
         }
     }
 
-    pub fn addMapNode(self: *@This(), node: MapNode) !void {
-        try self.nodes.append(node);
+    pub fn addMapNode(self: *@This(), allocator: std.mem.Allocator, node: MapNode) !void {
+        try self.nodes.append(allocator, node);
     }
 
     pub fn traverse(self: *@This(), callback: fn (?*Map) void) void {
@@ -541,7 +547,7 @@ pub const Map = struct {
         for (0..self.nodes.items.len) |i| {
             try self.nodes.items[i].deinit(state);
         }
-        self.nodes.deinit();
+        self.nodes.deinit(state.allocator.*);
         state.allocator.free(self.name);
         std.debug.print("MAP DEINIT DONE\n", .{});
     }
@@ -647,6 +653,8 @@ const BossPrefixes = [_][]const u8{
     "Evil",
 };
 
+const sentinel = 0;
+
 pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
     if (mapNodeType == .DUNGEON) {
         const prefixIndex: usize = state.rand.intRangeAtMost(
@@ -661,7 +669,7 @@ pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
         );
         const prefix = DungeonPrefixes[prefixIndex];
         const suffix = DungeonSuffixes[suffixIndex];
-        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{s} {s}", .{ prefix, suffix }, sentinel);
         return st;
     }
     if (mapNodeType == .SHOP) {
@@ -677,7 +685,7 @@ pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
         );
         const prefix = ShopPrefixes[prefixIndex];
         const suffix = ShopSuffixes[suffixIndex];
-        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{s} {s}", .{ prefix, suffix }, sentinel);
         return st;
     }
     if (mapNodeType == .WALKING) {
@@ -693,7 +701,7 @@ pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
         );
         const prefix = WalkingPrefixes[prefixIndex];
         const suffix = WalkingSuffixes[suffixIndex];
-        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{s} {s}", .{ prefix, suffix }, sentinel);
         return st;
     }
     if (mapNodeType == .BOSS) {
@@ -709,9 +717,9 @@ pub fn generateMapName(mapNodeType: MapNodeType, state: *s.State) ![:0]u8 {
         );
         const prefix = BossPrefixes[prefixIndex];
         const suffix = BossSuffixes[suffixIndex];
-        const st = try std.fmt.allocPrintZ(state.allocator, "{s} {s}", .{ prefix, suffix });
+        const st = try std.fmt.allocPrintSentinel(state.allocator.*, "{s} {s}", .{ prefix, suffix }, sentinel);
         return st;
     }
-    const st = try std.fmt.allocPrintZ(state.allocator, "No map name", .{});
+    const st = try std.fmt.allocPrintSentinel(state.allocator.*, "No map name", .{}, sentinel);
     return st;
 }

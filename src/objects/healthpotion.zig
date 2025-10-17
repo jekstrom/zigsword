@@ -94,7 +94,8 @@ pub const HealthPotion = struct {
                 rl.getColor(0x0000D0),
             );
 
-            const st = try std.fmt.allocPrintZ(state.allocator, "Heal adventurer {d}", .{self.healAmount});
+            const sentinel = 0;
+            const st = try std.fmt.allocPrintSentinel(state.allocator.*, "Heal adventurer {d}", .{self.healAmount}, sentinel);
             defer state.allocator.free(st);
             rl.drawText(
                 st,

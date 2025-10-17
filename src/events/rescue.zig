@@ -78,7 +78,7 @@ pub const RescueWalkingEvent = struct {
             .x = center.x - (messageHeight / 2),
             .y = center.y - (messageWidth / 2),
         };
-        const result = ui.guiMessageBox(
+        const result = ui.messageBox(
             messageRect,
             self.name,
             "You encounter an altar to $DEITY",
@@ -94,7 +94,7 @@ pub const RescueWalkingEvent = struct {
             self.handled = true;
         }
         if (result == 2) {
-            try state.player.rescued.?.append(.PEASANT);
+            try state.player.rescued.?.append(state.allocator.*, .PEASANT);
 
             if (state.player.alignment == .EVIL) {
                 // It is a good action to release the peasant,
@@ -106,7 +106,7 @@ pub const RescueWalkingEvent = struct {
             self.handled = true;
         }
         if (result == 3) {
-            try state.player.killed.?.append(.PEASANT);
+            try state.player.killed.?.append(state.allocator.*, .PEASANT);
 
             if (state.player.alignment == .GOOD) {
                 // It is an evil action to kill the peasant,
