@@ -22,7 +22,7 @@ pub const MapNode = struct {
     type: MapNodeType,
     texture: ?rl.Texture,
     background: ?rl.Texture,
-    monsters: ?*std.ArrayList(mob.Monster),
+    monsters: ?std.ArrayList(mob.Monster),
     monstersEntered: bool,
     event: ?*Event,
     shopMap: ?ShopMap,
@@ -44,7 +44,7 @@ pub const MapNode = struct {
             for (0..monsters.items.len) |i| {
                 try monsters.items[i].deinit(state);
             }
-            monsters.deinit(state.allocator.*);
+            self.monsters.?.deinit(state.allocator.*);
         }
         if (self.shopMap != null) {
             self.shopMap.?.deinit(state);
@@ -392,8 +392,7 @@ pub const MapNode = struct {
             if (self.texture) |texture| {
                 for (0..g.Grid.numCols) |i| {
                     const row: usize = state.grid.cells.len - 4;
-                    std.debug.print("Clearing textures for cell ({d}, {d})\n", .{ row, i });
-                    state.grid.cells[row][i].clearTextures(state.allocator.*);
+                    state.grid.cells[row][i].clearTextures();
 
                     const textureWidth = 215;
                     const textureHeight = 250;

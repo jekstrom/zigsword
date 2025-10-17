@@ -257,7 +257,7 @@ pub const State = struct {
                     try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
-                self.grid.clearTextures(self.allocator.*);
+                self.grid.clearTextures();
                 return;
             }
         }
@@ -281,7 +281,7 @@ pub const State = struct {
                     try self.generateRandomMaps();
                 }
                 self.adventurer.chooseNextMap(self);
-                self.grid.clearTextures(self.allocator.*);
+                self.grid.clearTextures();
                 return;
             }
         }
@@ -364,13 +364,12 @@ pub const State = struct {
                 try outsideNode.init(self);
                 try newMap.addMapNode(self.allocator.*, outsideNode);
             } else if (nodeType == .DUNGEON) {
-                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var dungeonNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
-                    .monsters = &mm,
+                    .monsters = try MonsterList.initCapacity(self.allocator.*, 128),
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,
@@ -379,13 +378,12 @@ pub const State = struct {
                 try dungeonNode.init(self);
                 try newMap.addMapNode(self.allocator.*, dungeonNode);
             } else if (nodeType == .BOSS) {
-                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var dungeonNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.DUNGEONBACKGROUND),
-                    .monsters = &mm,
+                    .monsters = try MonsterList.initCapacity(self.allocator.*, 128),
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,
@@ -394,13 +392,12 @@ pub const State = struct {
                 try dungeonNode.init(self);
                 try newMap.addMapNode(self.allocator.*, dungeonNode);
             } else if (nodeType == .ASCENDBOSS) {
-                var mm = try MonsterList.initCapacity(self.allocator.*, 128);
                 var ascendBossNode: m.MapNode = .{
                     .name = st,
                     .type = nodeType,
                     .texture = self.textureMap.get(.DUNGEONGROUND),
                     .background = self.textureMap.get(.ASCENDBOSSBACKGROUND),
-                    .monsters = &mm,
+                    .monsters = try MonsterList.initCapacity(self.allocator.*, 128),
                     .monstersEntered = false,
                     .event = null,
                     .shopMap = null,

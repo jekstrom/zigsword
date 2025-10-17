@@ -41,8 +41,6 @@ pub fn drawUi(state: *s.State, topUI: f32) anyerror!void {
     }
 
     if (state.player.name.len > 0) {
-        std.debug.print("----player name-----\n", .{});
-        std.debug.print("----{d} - {s}----\n", .{ state.player.name.len, state.player.name });
         rl.drawText(
             state.player.name,
             250,
